@@ -1,0 +1,558 @@
+{% extends 'base.html' %}
+
+{% block sidebar_nav %}
+    <a href="#" class="active"><i class="fa-solid fa-inbox"></i> Inbox <span class="badge sidebar-badge">{{ new_count }}</span></a>
+    <a href="#"><i class="fa-solid fa-user-check"></i> Assign Complaints</a>
+    <a href="#"><i class="fa-solid fa-clock"></i> SLA Monitor</a>
+    <a href="#"><i class="fa-solid fa-chart-bar"></i> Reports</a>
+{% endblock %}
+
+{% block page_title %}Reviewer Portal{% endblock %}
+{% block page_sub %}Manage incoming complaints, assignment, and SLA performance{% endblock %}
+
+{% block content %}
+    <style>
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            padding: 22px;
+            border-radius: 24px;
+            background: var(--card);
+            border: 1px solid var(--border);
+        }
+
+        .stat-card.overdue { border-top: 4px solid #DC2626; }
+        .stat-card.active { border-top: 4px solid #D97706; }
+        .stat-card.new { border-top: 4px solid var(--primary); }
+
+        .stat-title {
+            margin: 0;
+            color: var(--text-mid);
+            font-size: 0.92rem;
+        }
+
+        .stat-value {
+            margin: 12px 0 0;
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .filter-panel {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 26px;
+            padding: 22px;
+            border-radius: 24px;
+            background: var(--card);
+            border: 1px solid var(--border);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 16px;
+            align-items: end;
+        }
+
+        .filter-grid .field,
+        .filter-grid .field > input,
+        .filter-grid .field > select {
+            width: 100%;
+        }
+
+        .filter-grid label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+            font-weight: 700;
+        }
+
+        .btn-filter {
+            min-width: 140px;
+            justify-self: end;
+        }
+
+        .table-card {
+            overflow-x: auto;
+        }
+
+        .complaints-table th,
+        .complaints-table td {
+            white-space: nowrap;
+        }
+
+        .complaint-person {
+            display: grid;
+            gap: 4px;
+        }
+
+        .complaint-person strong {
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .complaint-person span {
+            color: var(--text-mid);
+            font-size: 0.92rem;
+        }
+
+        .sla-pill {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sla-deadline {
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .sla-days {
+            font-size: 0.9rem;
+            color: var(--text-mid);
+        }
+
+        .badge.status-overdue {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .modal-hidden {
+            display: none;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .modal-fieldset {
+            display: grid;
+            gap: 16px;
+        }
+
+        .modal-small {
+            font-size: 0.92rem;
+            color: var(--text-mid);
+            margin-top: -8px;
+        }
+
+        .inline-radio {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .inline-radio input {
+            accent-color: var(--primary);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        @media (max-width: 1100px) {
+            .filter-grid,
+            .form-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .filter-grid,
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .btn-filter {
+                justify-self: stretch;
+            }
+        }
+    </style>
+
+    <div class="stat-grid">
+        <div class="stat-card new">
+            <p class="stat-title">New / Unassigned</p>
+            <p class="stat-value">{{ new_count }}</p>
+        </div>
+        <div class="stat-card overdue">
+            <p class="stat-title">Overdue</p>
+            <p class="stat-value">{{ overdue_count }}</p>
+        </div>
+        <div class="stat-card active">
+            <p class="stat-title">Total Active</p>
+            <p class="stat-value">{{ active_count }}</p>
+        </div>
+    </div>
+
+    <section class="filter-panel">
+        <div class="filter-grid">
+            <div class="field">
+                <label for="searchQuery">Search</label>
+                <input type="search" id="searchQuery" placeholder="Search name or case ID">
+            </div>
+            <div class="field">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter">
+                    <option value="">All</option>
+                    <option value="new">New</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="overdue">Overdue</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="priorityFilter">Priority</label>
+                <select id="priorityFilter">
+                    <option value="">All</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="sourceFilter">Source</label>
+                <select id="sourceFilter">
+                    <option value="">All</option>
+                    <option value="phone">Phone</option>
+                    <option value="email">Email</option>
+                    <option value="web">Web</option>
+                    <option value="branch">Branch</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="dateFrom">From</label>
+                <input type="date" id="dateFrom">
+            </div>
+            <div class="field">
+                <label for="dateTo">To</label>
+                <input type="date" id="dateTo">
+            </div>
+        </div>
+        <button class="btn btn-primary btn-filter" id="applyFilters">Filter</button>
+    </section>
+
+    <div class="card table-card">
+        <table class="complaints-table">
+            <thead>
+                <tr>
+                    <th>Case ID</th>
+                    <th>Complainant</th>
+                    <th>Bank</th>
+                    <th>Source</th>
+                    <th>Category</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Date Logged</th>
+                    <th>SLA</th>
+                    <th>Handler</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="complaintRows">
+                {% for complaint in complaints %}
+                    <tr data-complaint-id="{{ complaint.id }}" data-status="{{ complaint.status }}" data-priority="{{ complaint.priority }}" data-source="{{ complaint.source }}" data-date-logged="{{ complaint.date_entered_system|date:'Y-m-d' }}">
+                        <td>{{ complaint.case_id }}</td>
+                        <td>
+                            <div class="complaint-person">
+                                <strong>{{ complaint.complainant_name }}</strong>
+                                <span>{{ complaint.complainant_phone }}</span>
+                            </div>
+                        </td>
+                        <td>{{ complaint.bank_name }}</td>
+                        <td>{{ complaint.source|capfirst }}</td>
+                        <td>{{ complaint.category }}</td>
+                        <td><span class="badge priority-{{ complaint.priority|lower }}">{{ complaint.priority|capfirst }}</span></td>
+                        <td><span class="badge status-{{ complaint.status|slugify }}">{{ complaint.status|title }}</span></td>
+                        <td>{{ complaint.date_entered_system|date:'M d, Y' }}</td>
+                        <td>
+                            <div class="sla-pill">
+                                <span class="sla-deadline">{{ complaint.sla_deadline|date:'M d, Y' }}</span>
+                                <span class="sla-days">{{ complaint.sla_days }} days left</span>
+                            </div>
+                        </td>
+                        <td>{% if complaint.assigned_to %}{{ complaint.assigned_to.get_full_name|default:complaint.assigned_to.username }}{% else %}Unassigned{% endif %}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="btn btn-primary btn-sm assign-btn" data-id="{{ complaint.id }}" data-case="{{ complaint.case_id }}">Assign</button>
+                                <button type="button" class="btn btn-outline btn-sm view-btn" data-id="{{ complaint.id }}">View</button>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="11" style="text-align:center; padding: 32px 0;">No complaints found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div id="assignModal" class="modal-overlay modal-hidden" aria-hidden="true">
+        <div class="modal">
+            <div>
+                <p class="badge status-new" style="margin-bottom: 12px;">Assign Complaint</p>
+                <h3 id="modalCaseId">Case #</h3>
+                <p class="modal-small">Choose assignment details and update SLA before confirming.</p>
+            </div>
+
+            <div class="modal-fieldset">
+                <div class="form-group full">
+                    <label for="assignTo">Assign To</label>
+                    <select id="assignTo">
+                        {% for handler in handlers %}
+                            <option value="{{ handler.id }}">{{ handler.get_full_name|default:handler.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>SLA Mode</label>
+                    <div class="inline-radio">
+                        <input type="radio" name="slaMode" id="slaAuto" value="auto" checked>
+                        <label for="slaAuto">Auto (by category)</label>
+                    </div>
+                    <div class="inline-radio">
+                        <input type="radio" name="slaMode" id="slaManual" value="manual">
+                        <label for="slaManual">Manual</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dateAssigned">Date Assigned</label>
+                        <input type="date" id="dateAssigned">
+                    </div>
+                    <div class="form-group" id="manualSlaGroup" style="display: none;">
+                        <label for="slaDays">SLA Days</label>
+                        <input type="number" id="slaDays" min="1" step="1" placeholder="Days">
+                    </div>
+                </div>
+
+                <div class="form-group full">
+                    <label for="slaDeadline">SLA Deadline</label>
+                    <input type="text" id="slaDeadline" readonly>
+                </div>
+
+                <div class="form-group full">
+                    <label for="assignmentNote">Assignment Note</label>
+                    <textarea id="assignmentNote" class="textarea-field" placeholder="Optional note for the handler"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="cancelAssign">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmAssign">Confirm Assignment</button>
+            </div>
+        </div>
+    </div>
+
+    {% block extra_scripts %}
+    <script>
+        const assignModal = document.getElementById('assignModal');
+        const modalCaseId = document.getElementById('modalCaseId');
+        const assignTo = document.getElementById('assignTo');
+        const slaAuto = document.getElementById('slaAuto');
+        const slaManual = document.getElementById('slaManual');
+        const manualSlaGroup = document.getElementById('manualSlaGroup');
+        const slaDays = document.getElementById('slaDays');
+        const dateAssigned = document.getElementById('dateAssigned');
+        const slaDeadline = document.getElementById('slaDeadline');
+        const assignmentNote = document.getElementById('assignmentNote');
+        const confirmAssign = document.getElementById('confirmAssign');
+        const cancelAssign = document.getElementById('cancelAssign');
+        let activeComplaintId = null;
+
+        const statusMap = {
+            new: 'New',
+            under_review: 'Under Review',
+            assigned: 'Assigned',
+            in_progress: 'In Progress',
+            pending_info: 'Pending Info',
+            overdue: 'Overdue',
+            resolved: 'Resolved',
+            closed: 'Closed'
+        };
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function formatDateInput(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatReadableDate(date) {
+            return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function calculateDeadline(baseDate, days) {
+            const deadline = new Date(baseDate);
+            deadline.setDate(deadline.getDate() + Number(days));
+            return formatReadableDate(deadline);
+        }
+
+        function updateDeadline() {
+            const assigned = dateAssigned.value ? new Date(dateAssigned.value) : new Date();
+            const days = slaManual.checked && slaDays.value ? slaDays.value : 7;
+            slaDeadline.value = calculateDeadline(assigned, days);
+        }
+
+        function openAssignmentModal(caseId, complaintId) {
+            activeComplaintId = complaintId;
+            modalCaseId.textContent = `Case ${caseId}`;
+            dateAssigned.value = formatDateInput(new Date());
+            slaAuto.checked = true;
+            slaManual.checked = false;
+            manualSlaGroup.style.display = 'none';
+            slaDays.value = '';
+            assignmentNote.value = '';
+            updateDeadline();
+            assignModal.classList.remove('modal-hidden');
+            assignModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeAssignmentModal() {
+            assignModal.classList.add('modal-hidden');
+            assignModal.setAttribute('aria-hidden', 'true');
+            activeComplaintId = null;
+        }
+
+        document.querySelectorAll('.assign-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                openAssignmentModal(button.dataset.case, button.dataset.id);
+            });
+        });
+
+        slaAuto.addEventListener('change', () => {
+            manualSlaGroup.style.display = slaAuto.checked ? 'none' : 'grid';
+            updateDeadline();
+        });
+
+        slaManual.addEventListener('change', () => {
+            manualSlaGroup.style.display = slaManual.checked ? 'grid' : 'none';
+            updateDeadline();
+        });
+
+        slaDays.addEventListener('input', updateDeadline);
+        dateAssigned.addEventListener('change', updateDeadline);
+
+        cancelAssign.addEventListener('click', closeAssignmentModal);
+        assignModal.addEventListener('click', event => {
+            if (event.target === assignModal) {
+                closeAssignmentModal();
+            }
+        });
+
+        confirmAssign.addEventListener('click', async () => {
+            if (!activeComplaintId) return;
+
+            const payload = {
+                assigned_to: assignTo.value,
+                sla_mode: slaAuto.checked ? 'auto' : 'manual',
+                date_assigned: dateAssigned.value,
+                assignment_note: assignmentNote.value,
+            };
+
+            if (slaManual.checked) {
+                payload.sla_days = slaDays.value;
+            }
+
+            const response = await fetch(`/api/complaints/${activeComplaintId}/assign/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ detail: 'Unable to assign complaint.' }));
+                alert(error.detail || 'Failed to assign complaint.');
+                return;
+            }
+
+            const data = await response.json();
+            updateComplaintRow(data);
+            closeAssignmentModal();
+        });
+
+        function statusClass(status) {
+            return `status-${status.replace(/\s+/g, '_').toLowerCase()}`;
+        }
+
+        function updateComplaintRow(data) {
+            const row = document.querySelector(`tr[data-complaint-id="${data.id}"]`);
+            if (!row) return;
+
+            const statusCell = row.querySelector('td:nth-child(7) .badge');
+            const handlerCell = row.querySelector('td:nth-child(10)');
+            const slaCell = row.querySelector('td:nth-child(9) .sla-pill');
+
+            if (statusCell) {
+                statusCell.textContent = statusMap[data.status] || data.status;
+                statusCell.className = `badge ${statusClass(data.status)}`;
+            }
+
+            if (handlerCell) {
+                handlerCell.textContent = data.assigned_to_name || handlerCell.textContent;
+            }
+
+            if (slaCell) {
+                const deadline = data.sla_deadline ? formatReadableDate(data.sla_deadline) : slaDeadline.value;
+                const daysLeft = data.sla_days !== undefined ? `${data.sla_days} days left` : 'TBD';
+                slaCell.innerHTML = `<span class="sla-deadline">${deadline}</span><span class="sla-days">${daysLeft}</span>`;
+            }
+        }
+
+        document.getElementById('applyFilters').addEventListener('click', () => {
+            const searchValue = document.getElementById('searchQuery').value.toLowerCase();
+            const statusValue = document.getElementById('statusFilter').value;
+            const priorityValue = document.getElementById('priorityFilter').value;
+            const sourceValue = document.getElementById('sourceFilter').value;
+            const fromDate = document.getElementById('dateFrom').value;
+            const toDate = document.getElementById('dateTo').value;
+
+            document.querySelectorAll('#complaintRows tr[data-complaint-id]').forEach(row => {
+                const caseId = row.cells[0].textContent.toLowerCase();
+                const name = row.querySelector('.complaint-person strong').textContent.toLowerCase();
+                const status = row.dataset.status;
+                const priority = row.dataset.priority;
+                const source = row.dataset.source;
+                const logged = row.dataset.dateLogged;
+
+                const matchesSearch = !searchValue || caseId.includes(searchValue) || name.includes(searchValue);
+                const matchesStatus = !statusValue || status === statusValue;
+                const matchesPriority = !priorityValue || priority === priorityValue;
+                const matchesSource = !sourceValue || source === sourceValue;
+                const matchesFrom = !fromDate || logged >= fromDate;
+                const matchesTo = !toDate || logged <= toDate;
+
+                row.style.display = (matchesSearch && matchesStatus && matchesPriority && matchesSource && matchesFrom && matchesTo) ? '' : 'none';
+            });
+        });
+    </script>
+    {% endblock %}
+{% endblock %}

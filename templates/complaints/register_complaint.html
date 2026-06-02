@@ -1,0 +1,566 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Complaint | RSSB CMS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#2563eb',
+                        page: '#f5f7fb',
+                    },
+                    boxShadow: {
+                        soft: '0 10px 30px rgba(15, 23, 42, 0.08)',
+                        card: '0 14px 34px rgba(15, 23, 42, 0.08)',
+                    },
+                    animation: {
+                        floatIn: 'floatIn .45s ease forwards',
+                        pulseSoft: 'pulseSoft 2.4s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        floatIn: {
+                            '0%': { opacity: '0', transform: 'translateY(12px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        pulseSoft: {
+                            '0%, 100%': { boxShadow: '0 0 0 0 rgba(37, 99, 235, 0.10)' },
+                            '50%': { boxShadow: '0 0 0 8px rgba(37, 99, 235, 0.02)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        html, body { background: #f5f7fb; }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #e5e7eb;
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c7d2fe;
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #93c5fd;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.74);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <div class="min-h-screen flex bg-page">
+        {% with active_page='register-complaint' %}
+            {% include 'includes/sidebar.html' %}
+        {% endwith %}
+
+        <div class="flex-1 min-w-0">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+                <div class="max-w-[1700px] mx-auto px-4 md:px-6 py-4">
+                    <div class="flex flex-wrap lg:flex-nowrap items-center gap-3 md:gap-4 justify-between">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <button id="openSidebarBtn" class="lg:hidden h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" aria-label="Open sidebar">
+                                <i class="fa-solid fa-bars"></i>
+                            </button>
+                            <div class="min-w-0">
+                                <nav class="flex items-center gap-2 text-xs md:text-sm text-slate-500 mb-1">
+                                    {% if request.user.role == 'admin' %}
+                                        <a href="{% url 'admin-dashboard' %}" class="hover:text-brand transition-colors">Dashboard</a>
+                                    {% elif request.user.role == 'reviewer' %}
+                                        <a href="{% url 'reviewer-dashboard' %}" class="hover:text-brand transition-colors">Dashboard</a>
+                                    {% else %}
+                                        <span>Dashboard</span>
+                                    {% endif %}
+                                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                                    <span class="text-slate-700 font-semibold">Register Complaint</span>
+                                </nav>
+                                <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">Register Complaint</h2>
+                                <p class="text-sm text-slate-500 mt-1">Capture complete complaint details with premium workflow clarity.</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full lg:w-auto flex flex-wrap items-center gap-2 md:gap-3">
+                            <div class="relative flex-1 min-w-[220px] lg:min-w-[280px]">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                <input type="search" placeholder="Search complaints, users, case ID..." class="w-full h-11 rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                            </div>
+                            <button class="relative h-11 w-11 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-brand hover:bg-blue-50 transition-all" aria-label="Notifications">
+                                <i class="fa-regular fa-bell"></i>
+                                <span class="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+                            </button>
+                            <div id="liveDate" class="h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 inline-flex items-center">Loading date...</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 pb-28 lg:pb-6">
+                {% if messages %}
+                    <div class="space-y-3 mb-5">
+                        {% for message in messages %}
+                            <div class="rounded-2xl border px-4 py-3 text-sm font-semibold {% if message.tags == 'success' %}bg-emerald-50 text-emerald-700 border-emerald-200{% else %}bg-red-50 text-red-700 border-red-200{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 2xl:grid-cols-[1fr_360px] gap-6" id="complaintForm">
+                    {% csrf_token %}
+
+                    <div class="space-y-6">
+                        <!-- SECTION: Complaint Information -->
+                        <section class="rounded-2xl border border-slate-200 bg-white shadow-card animate-floatIn overflow-hidden">
+                            <div class="px-5 md:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-white">
+                                <h3 class="text-lg font-bold text-slate-900">Complaint Information</h3>
+                                <p class="text-sm text-slate-500 mt-1">Capture identity and contact details accurately.</p>
+                            </div>
+
+                            <div class="p-5 md:p-6 grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Case Number <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <i class="fa-solid fa-hashtag absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <input type="text" name="case_number" id="caseNumber" required class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all" placeholder="e.g. CMP-2026-0001">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Full Name <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <i class="fa-regular fa-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <input type="text" name="full_name" id="fullName" required class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all" placeholder="Enter full legal name">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Phone Number <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <i class="fa-solid fa-phone absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <input type="text" name="phone_number" id="phoneNumber" required class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all" placeholder="e.g. +250 7XX XXX XXX">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Complaint Source <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <i class="fa-solid fa-rss absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <select name="complaint_source" id="complaintSource" required class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all appearance-none">
+                                                <option value="">Select source</option>
+                                                {% for value, label in source_choices %}
+                                                    <option value="{{ value }}">{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Email Address</label>
+                                        <div class="relative">
+                                            <i class="fa-regular fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <input type="email" name="email" id="email" class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all" placeholder="name@example.com">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">National ID</label>
+                                        <div class="relative">
+                                            <i class="fa-regular fa-id-card absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <input type="text" name="national_id" id="nationalId" class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all" placeholder="Optional ID number">
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Bank / Institution</label>
+                                        <div class="relative">
+                                            <i class="fa-regular fa-building absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <input type="text" name="bank_institution" id="bankInstitution" class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all" placeholder="Institution name">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <aside class="rounded-2xl border border-slate-200 p-4 bg-slate-50/60">
+                                    <div class="rounded-xl border border-dashed border-blue-200 bg-blue-50/60 p-5 text-center mb-4">
+                                        <div class="h-14 w-14 mx-auto rounded-2xl bg-white text-brand flex items-center justify-center shadow-sm">
+                                            <i class="fa-regular fa-user text-xl"></i>
+                                        </div>
+                                        <p class="text-sm font-semibold text-slate-700 mt-3" id="profileNamePreview">Complainant Profile</p>
+                                        <p class="text-xs text-slate-500">Live identity preview</p>
+                                    </div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-2">Optional ID Upload</label>
+                                    <input type="file" name="id_document" class="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-100 file:text-brand file:font-semibold file:px-3 file:py-2 hover:file:bg-blue-200 transition-all">
+                                </aside>
+                            </div>
+                        </section>
+
+                        <!-- SECTION: Complaint Details -->
+                        <section class="rounded-2xl border border-slate-200 bg-white shadow-card animate-floatIn overflow-hidden" style="animation-delay: .06s;">
+                            <div class="px-5 md:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-violet-50 via-white to-white">
+                                <h3 class="text-lg font-bold text-slate-900">Complaint Details</h3>
+                                <p class="text-sm text-slate-500 mt-1">Define issue type, urgency, and full narrative.</p>
+                            </div>
+
+                            <div class="p-5 md:p-6 space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Complaint Title <span class="text-red-500">*</span></label>
+                                        <input type="text" name="complaint_title" id="complaintTitle" required class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all" placeholder="Short, clear complaint title">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Complaint Date <span class="text-red-500">*</span></label>
+                                        <input type="date" name="complaint_date" id="complaintDate" required class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="block text-sm font-semibold text-slate-700">Description</label>
+                                        <span class="text-xs text-slate-500"><span id="descCount">0</span>/2000</span>
+                                    </div>
+                                    <textarea name="description" id="description" rows="6" maxlength="2000" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all resize-y" placeholder="Provide complete complaint details, timeline, affected account(s), and expected resolution."></textarea>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- SECTION: Assignment & Response -->
+                        <section class="rounded-2xl border border-slate-200 bg-white shadow-card animate-floatIn overflow-hidden" style="animation-delay: .12s;">
+                            <div class="px-5 md:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-cyan-50 via-white to-white">
+                                <h3 class="text-lg font-bold text-slate-900">Assignment & Response</h3>
+                                <p class="text-sm text-slate-500 mt-1">Set ownership and response timeline.</p>
+                            </div>
+
+                            <div class="p-5 md:p-6 space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Assign To Handler <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <i class="fa-solid fa-user-gear absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <select name="assigned_to" id="assignedTo" required class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all appearance-none">
+                                                <option value="">Select handler</option>
+                                                {% for h in handlers %}
+                                                    <option value="{{ h.id }}" data-agent="{{ h.get_full_name|default:h.username }}">{{ h.get_full_name|default:h.username }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Response Due Days <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <i class="fa-regular fa-calendar-check absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <select name="response_due_days" id="responseDueDays" required class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all appearance-none">
+                                                <option value="">Select days</option>
+                                                <option value="2">2 Days</option>
+                                                <option value="3">3 Days</option>
+                                                <option value="7">7 Days</option>
+                                                <option value="14">14 Days</option>
+                                                <option value="21">21 Days</option>
+                                                <option value="30">30 Days</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Attachments</label>
+                                    <div id="dropZone" class="rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/40 hover:bg-blue-50 transition-all p-6 text-center cursor-pointer">
+                                        <input type="file" id="attachments" name="attachments" multiple class="hidden">
+                                        <div class="h-12 w-12 mx-auto rounded-xl bg-white text-brand flex items-center justify-center shadow-sm mb-3 animate-pulseSoft">
+                                            <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                                        </div>
+                                        <p class="text-sm font-semibold text-slate-700">Drag & drop files here</p>
+                                        <p class="text-xs text-slate-500 mt-1">or click to browse documents, images, and evidence files.</p>
+                                    </div>
+                                    <div id="filePreview" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-4"></div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <aside class="2xl:sticky 2xl:top-[92px] h-fit">
+                        <div class="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+                            <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-brand to-blue-500 text-white">
+                                <h3 class="text-base font-bold">Complaint Summary</h3>
+                                <p class="text-xs text-blue-100 mt-1">Live snapshot before submission</p>
+                            </div>
+                            <div class="p-5 space-y-4">
+                                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                                    <p class="text-xs text-slate-500">Case Number</p>
+                                    <p class="text-sm font-bold text-brand mt-1" id="summaryCaseNumber">---</p>
+                                </div>
+
+                                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                                    <p class="text-xs text-slate-500">System Code</p>
+                                    <p class="text-sm font-bold text-slate-700 mt-1" id="summarySystemCode">SMP-XXXX-XXXX</p>
+                                </div>
+
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-slate-500">Assigned Handler</span>
+                                        <span id="summaryAgent" class="text-slate-700 font-semibold">Not assigned</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-slate-500">Complaint Status</span>
+                                        <span id="summaryStatus" class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700">Pending</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-slate-500">Response Due</span>
+                                        <span id="summaryResponseDue" class="text-slate-700 font-semibold">Not set</span>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-700">
+                                    <p class="font-semibold mb-1">Submission Tips</p>
+                                    <ul class="list-disc pl-4 space-y-1">
+                                        <li>Ensure case number is unique.</li>
+                                        <li>Add clear chronology in description.</li>
+                                        <li>Attach supporting evidence files.</li>
+                                        <li>Set appropriate response due days.</li>
+                                    </ul>
+                                </div>
+
+                                <div class="grid gap-2 pt-1">
+                                    <button type="button" id="saveDraftBtn" class="w-full h-11 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-all">Save Draft</button>
+                                    <button type="submit" class="w-full h-11 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200/70">Submit Complaint</button>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <div class="fixed lg:hidden bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur-md p-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="saveDraftBtnMobile" class="h-11 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold">Save Draft</button>
+                            <button type="submit" class="h-11 rounded-xl bg-brand text-white text-sm font-semibold shadow-md shadow-blue-200/70">Submit Complaint</button>
+                        </div>
+                    </div>
+                </form>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarBackdrop.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            sidebarBackdrop.classList.add('hidden');
+        }
+
+        if (openSidebarBtn) openSidebarBtn.addEventListener('click', openSidebar);
+        if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+
+        function formatLiveDate() {
+            const now = new Date();
+            const opts = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            const el = document.getElementById('liveDate');
+            if (el) el.textContent = now.toLocaleDateString(undefined, opts);
+        }
+        formatLiveDate();
+
+        const fullNameInput = document.getElementById('fullName');
+        const profileNamePreview = document.getElementById('profileNamePreview');
+        const complaintTitle = document.getElementById('complaintTitle');
+        const description = document.getElementById('description');
+        const descCount = document.getElementById('descCount');
+        const assignedTo = document.getElementById('assignedTo');
+        const summaryAgent = document.getElementById('summaryAgent');
+        const responseDueDays = document.getElementById('responseDueDays');
+        const summaryResponseDue = document.getElementById('summaryResponseDue');
+        const summaryStatus = document.getElementById('summaryStatus');
+        const caseNumberInput = document.getElementById('caseNumber');
+        const summaryCaseNumber = document.getElementById('summaryCaseNumber');
+        const form = document.getElementById('complaintForm');
+
+        const saveDraftBtn = document.getElementById('saveDraftBtn');
+        const saveDraftBtnMobile = document.getElementById('saveDraftBtnMobile');
+
+        function updateCaseNumberSummary() {
+            if (!caseNumberInput || !summaryCaseNumber) return;
+            summaryCaseNumber.textContent = caseNumberInput.value.trim() || '---';
+        }
+
+        function updateAgentSummary() {
+            if (!assignedTo || !summaryAgent) return;
+            const label = assignedTo.options[assignedTo.selectedIndex]?.text || 'Not assigned';
+            summaryAgent.textContent = label;
+        }
+
+        function updateResponseDueSummary() {
+            if (!responseDueDays || !summaryResponseDue) return;
+            const label = responseDueDays.options[responseDueDays.selectedIndex]?.text || 'Not set';
+            summaryResponseDue.textContent = label;
+        }
+
+        if (fullNameInput && profileNamePreview) {
+            fullNameInput.addEventListener('input', () => {
+                profileNamePreview.textContent = fullNameInput.value.trim() || 'Complainant Profile';
+            });
+        }
+
+        if (caseNumberInput && summaryCaseNumber) {
+            caseNumberInput.addEventListener('input', updateCaseNumberSummary);
+            updateCaseNumberSummary();
+        }
+
+        if (description && descCount) {
+            const updateCount = () => {
+                descCount.textContent = String(description.value.length);
+            };
+            description.addEventListener('input', updateCount);
+            updateCount();
+        }
+
+        if (assignedTo) {
+            assignedTo.addEventListener('change', updateAgentSummary);
+            updateAgentSummary();
+        }
+
+        if (responseDueDays) {
+            responseDueDays.addEventListener('change', updateResponseDueSummary);
+            updateResponseDueSummary();
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        const attachmentsInput = document.getElementById('attachments');
+        const filePreview = document.getElementById('filePreview');
+
+        function renderFilePreview(files) {
+            if (!filePreview) return;
+            filePreview.innerHTML = '';
+
+            Array.from(files).forEach((file) => {
+                const card = document.createElement('div');
+                card.className = 'rounded-xl border border-slate-200 bg-white p-3 flex items-start gap-3';
+                card.innerHTML = `
+                    <div class="h-9 w-9 rounded-lg bg-blue-50 text-brand flex items-center justify-center shrink-0">
+                        <i class="fa-regular fa-file"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-slate-700 truncate">${file.name}</p>
+                        <p class="text-[11px] text-slate-500">${(file.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                `;
+                filePreview.appendChild(card);
+            });
+        }
+
+        if (dropZone && attachmentsInput) {
+            dropZone.addEventListener('click', () => attachmentsInput.click());
+
+            attachmentsInput.addEventListener('change', () => {
+                renderFilePreview(attachmentsInput.files);
+            });
+
+            ['dragenter', 'dragover'].forEach((evt) => {
+                dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-brand', 'bg-blue-50');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach((evt) => {
+                dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-brand', 'bg-blue-50');
+                });
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                if (!dt || !dt.files || !dt.files.length) return;
+
+                const list = new DataTransfer();
+                Array.from(dt.files).forEach((f) => list.items.add(f));
+                attachmentsInput.files = list.files;
+                renderFilePreview(attachmentsInput.files);
+            });
+        }
+
+        function saveDraft() {
+            if (!form) return;
+            const data = new FormData(form);
+            const serializable = {};
+            data.forEach((value, key) => {
+                if (value instanceof File) return;
+                serializable[key] = value;
+            });
+            localStorage.setItem('complaint_register_draft', JSON.stringify(serializable));
+        }
+
+        function clearDraft() {
+            localStorage.removeItem('complaint_register_draft');
+        }
+
+        function restoreDraft() {
+            if (!form) return;
+            const raw = localStorage.getItem('complaint_register_draft');
+            if (!raw) return;
+            try {
+                const draft = JSON.parse(raw);
+                Object.keys(draft).forEach((key) => {
+                    const field = form.querySelector(`[name="${key}"]`);
+                    if (field && field.type !== 'file') field.value = draft[key];
+                });
+                updateAgentSummary();
+                updateResponseDueSummary();
+                updateCaseNumberSummary();
+                if (description && descCount) descCount.textContent = String(description.value.length);
+                if (fullNameInput && profileNamePreview) {
+                    profileNamePreview.textContent = fullNameInput.value.trim() || 'Complainant Profile';
+                }
+            } catch (e) {
+                localStorage.removeItem('complaint_register_draft');
+            }
+        }
+
+        if (saveDraftBtn) saveDraftBtn.addEventListener('click', saveDraft);
+        if (saveDraftBtnMobile) saveDraftBtnMobile.addEventListener('click', saveDraft);
+
+        if (form) {
+            form.addEventListener('submit', clearDraft);
+        }
+
+        restoreDraft();
+
+        document.querySelectorAll('input[required], textarea[required], select[required]').forEach((field) => {
+            field.addEventListener('invalid', () => {
+                field.classList.add('border-red-300', 'ring-2', 'ring-red-100');
+            });
+            field.addEventListener('input', () => {
+                field.classList.remove('border-red-300', 'ring-2', 'ring-red-100');
+            });
+            field.addEventListener('change', () => {
+                field.classList.remove('border-red-300', 'ring-2', 'ring-red-100');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings | RSSB CMS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: '#2563eb', page: '#f5f7fb' },
+                    boxShadow: { soft: '0 10px 30px rgba(15,23,42,0.08)', card: '0 12px 32px rgba(15,23,42,0.08)' },
+                    borderRadius: { '2xl': '1rem' },
+                    fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','Segoe UI','Roboto','Helvetica Neue','Arial','sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        html, body { background: #f5f7fb; }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #93c5fd; }
+        .glass { background: rgba(255,255,255,0.72); backdrop-filter: blur(10px); }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(15,31,61,0.45);
+            display: none; place-items: center; z-index: 50; backdrop-filter: blur(6px);
+        }
+        .modal-overlay.active { display: grid; }
+        .modal {
+            background: white; border-radius: 28px; padding: 28px;
+            width: min(92vw, 520px); box-shadow: 0 18px 50px rgba(15,31,61,0.08);
+            border: 1px solid #e2e8f5; animation: fadeInUp 0.3s ease both;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulseGreen {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }
+            50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        }
+        @keyframes pulseRed {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+            50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        }
+        .email-section-working { animation: pulseGreen 2.5s infinite; }
+        .email-section-broken { animation: pulseRed 2.5s infinite; }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <div class="min-h-screen flex bg-page">
+        {% with active_page='settings' %}
+            {% include 'includes/sidebar.html' %}
+        {% endwith %}
+
+        <div class="flex-1 min-w-0">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+                <div class="max-w-[1600px] mx-auto px-4 md:px-6 py-4">
+                    <div class="flex flex-wrap lg:flex-nowrap items-center gap-3 md:gap-4 justify-between">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <button id="openSidebarBtn" class="lg:hidden h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" aria-label="Open sidebar">
+                                <i class="fa-solid fa-bars"></i>
+                            </button>
+                            <div class="min-w-0">
+                                <p class="text-sm text-slate-500">System Configuration</p>
+                                <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">Settings</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-[1600px] mx-auto px-4 md:px-6 py-6 space-y-6">
+                {% if messages %}
+                    <div class="space-y-3">
+                        {% for message in messages %}
+                            <div class="flex items-center gap-3 p-4 rounded-2xl font-bold border {% if message.tags == 'success' %}bg-emerald-50 border-emerald-300 text-emerald-700{% elif message.tags == 'warning' %}bg-amber-50 border-amber-300 text-amber-700{% else %}bg-red-50 border-red-300 text-red-700{% endif %}">
+                                <i class="fa-solid {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'warning' %}fa-triangle-exclamation{% else %}fa-exclamation-circle{% endif %}"></i>
+                                <span>{{ message }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Department Management -->
+                <section class="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+                    <div class="px-5 md:px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
+                        <div>
+                            <h3 class="text-base md:text-lg font-bold text-slate-900">
+                                <i class="fa-solid fa-building mr-2 text-brand"></i>Department Management
+                            </h3>
+                            <p class="text-sm text-slate-500">Manage departments and their default SLA days</p>
+                        </div>
+                        <button onclick="openModal('departmentModal')" class="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 shadow-md shadow-blue-200/70 transition-all">
+                            <i class="fa-solid fa-plus"></i> Add Department
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-[600px] w-full text-sm">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Name</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Default SLA Days</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Handlers</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dept in departments %}
+                                <tr class="border-t border-slate-100 hover:bg-slate-50/70 transition-all">
+                                    <td class="px-5 md:px-6 py-4 font-semibold text-slate-800">{{ dept.name }}</td>
+                                    <td class="px-5 md:px-6 py-4">
+                                        <span class="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-700">{{ dept.default_sla_days }} days</span>
+                                    </td>
+                                    <td class="px-5 md:px-6 py-4 text-slate-600">{{ dept.handler_count }}</td>
+                                    <td class="px-5 md:px-6 py-4">
+                                        <div class="flex items-center gap-2">
+                                            <button onclick="editDepartment({{ dept.id }}, '{{ dept.name|escapejs }}', {{ dept.default_sla_days }})" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-blue-50 hover:text-brand transition-all">
+                                                <i class="fa-solid fa-pen"></i> Edit
+                                            </button>
+                                            <form method="post" action="{% url 'admin-settings' %}" class="inline" onsubmit="return confirm('Delete department {{ dept.name }}?')">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete_department">
+                                                <input type="hidden" name="dept_id" value="{{ dept.id }}">
+                                                <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-all">
+                                                    <i class="fa-solid fa-trash"></i> Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="px-5 md:px-6 py-12 text-center text-slate-500">
+                                        <div class="inline-flex flex-col items-center gap-2">
+                                            <div class="h-14 w-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-building"></i></div>
+                                            <p class="font-semibold text-slate-600">No departments created yet</p>
+                                            <p class="text-sm">Click "Add Department" to create the first one.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Category Management -->
+                <section class="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+                    <div class="px-5 md:px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
+                        <div>
+                            <h3 class="text-base md:text-lg font-bold text-slate-900">
+                                <i class="fa-solid fa-tags mr-2 text-brand"></i>Category Management
+                            </h3>
+                            <p class="text-sm text-slate-500">Manage complaint categories and their default SLA days</p>
+                        </div>
+                        <button onclick="openModal('categoryModal')" class="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 shadow-md shadow-blue-200/70 transition-all">
+                            <i class="fa-solid fa-plus"></i> Add Category
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-[600px] w-full text-sm">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Name</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Default SLA Days</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cat in categories %}
+                                <tr class="border-t border-slate-100 hover:bg-slate-50/70 transition-all">
+                                    <td class="px-5 md:px-6 py-4 font-semibold text-slate-800">{{ cat.name }}</td>
+                                    <td class="px-5 md:px-6 py-4">
+                                        <span class="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-700">{{ cat.default_sla_days }} days</span>
+                                    </td>
+                                    <td class="px-5 md:px-6 py-4">
+                                        <div class="flex items-center gap-2">
+                                            <button onclick="editCategory({{ cat.id }}, '{{ cat.name|escapejs }}', {{ cat.default_sla_days }})" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-blue-50 hover:text-brand transition-all">
+                                                <i class="fa-solid fa-pen"></i> Edit
+                                            </button>
+                                            <form method="post" action="{% url 'admin-settings' %}" class="inline" onsubmit="return confirm('Delete category {{ cat.name }}?')">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete_category">
+                                                <input type="hidden" name="cat_id" value="{{ cat.id }}">
+                                                <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-all">
+                                                    <i class="fa-solid fa-trash"></i> Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="px-5 md:px-6 py-12 text-center text-slate-500">
+                                        <div class="inline-flex flex-col items-center gap-2">
+                                            <div class="h-14 w-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-tags"></i></div>
+                                            <p class="font-semibold text-slate-600">No categories created yet</p>
+                                            <p class="text-sm">Click "Add Category" to create the first one.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Email Configuration -->
+                {% if email_config.is_working %}
+                    <section class="rounded-2xl border-2 border-emerald-500 bg-white shadow-card overflow-hidden email-section-working">
+                {% else %}
+                    <section class="rounded-2xl border-2 border-red-500 bg-white shadow-card overflow-hidden email-section-broken">
+                {% endif %}
+                    <form method="post" action="{% url 'admin-settings' %}" id="emailConfigForm">
+                        {% csrf_token %}
+                        <div class="px-5 md:px-6 py-4 border-b {% if email_config.is_working %}border-emerald-200 bg-emerald-50/40{% else %}border-red-200 bg-red-50/40{% endif %} flex flex-wrap items-center gap-3 justify-between">
+                            <div class="min-w-0">
+                                <h3 class="text-base md:text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
+                                    <i class="fa-solid fa-envelope mr-1 text-brand"></i><span>Email Configuration</span>
+                                    {% if email_config.is_working %}
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-1 text-xs font-bold border border-emerald-300">
+                                            <i class="fa-solid fa-circle-check"></i> Working
+                                        </span>
+                                    {% elif email_config.is_fully_configured %}
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 px-2.5 py-1 text-xs font-bold border border-red-300">
+                                            <i class="fa-solid fa-circle-xmark"></i> Not Working
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 px-2.5 py-1 text-xs font-bold border border-red-300">
+                                            <i class="fa-solid fa-triangle-exclamation"></i> Not Configured
+                                        </span>
+                                    {% endif %}
+                                </h3>
+                                <p class="text-sm text-slate-500">Configure email sender and SMTP settings for complaint notifications</p>
+                                {% if email_config.last_test_at %}
+                                    <p class="text-xs mt-1 {% if email_config.is_working %}text-emerald-600{% else %}text-red-600{% endif %} font-semibold">
+                                        <i class="fa-regular fa-clock mr-1"></i>
+                                        Last tested {{ email_config.last_test_at|date:"M j, Y H:i" }} &mdash; {{ email_config.last_test_message }}
+                                    </p>
+                                {% endif %}
+                            </div>
+                            <button type="submit" name="action" value="test_email_config" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-all">
+                                <i class="fa-solid fa-plug-circle-bolt"></i> Test Connection
+                            </button>
+                        </div>
+                        <div class="p-5 md:p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block font-semibold text-slate-800 mb-2">Sender Email *</label>
+                                    <input type="email" name="sender_email" value="{{ email_config.sender_email }}" placeholder="noreply@rssb.gov.rw" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                                    <p class="mt-1 text-xs text-slate-400">The "From" address for all system emails</p>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-800 mb-2">Sender Name</label>
+                                    <input type="text" name="sender_name" value="{{ email_config.sender_name }}" placeholder="RSSB Complaints System" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-800 mb-2">SMTP Host</label>
+                                    <input type="text" name="smtp_host" value="{{ email_config.smtp_host }}" placeholder="smtp.gmail.com" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-800 mb-2">SMTP Port</label>
+                                    <input type="number" name="smtp_port" value="{{ email_config.smtp_port }}" placeholder="587" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-800 mb-2">SMTP Username</label>
+                                    <input type="text" name="smtp_username" value="{{ email_config.smtp_username }}" placeholder="your-email@domain.com" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-800 mb-2">SMTP Password</label>
+                                    <input type="password" name="smtp_password" placeholder="Enter new password (leave blank to keep current)" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center gap-3">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="use_tls" {% if email_config.use_tls %}checked{% endif %} class="w-5 h-5 rounded border-slate-300 text-brand focus:ring-brand">
+                                    <span class="font-semibold text-slate-800 text-sm">Use TLS</span>
+                                </label>
+                            </div>
+                            <div class="flex flex-wrap justify-end gap-3 mt-5 pt-5 border-t border-slate-100">
+                                {% if email_config.is_fully_configured %}
+                                <span class="text-xs text-slate-500 self-center mr-auto">
+                                    <i class="fa-solid fa-circle-info mr-1"></i>
+                                    Saving will run a live SMTP test to update the status border.
+                                </span>
+                                {% endif %}
+                                <button type="submit" name="action" value="save_email_config" class="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-200/70">
+                                    <i class="fa-solid fa-save mr-2"></i> Save & Test Email Configuration
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- System Summary -->
+                <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+                        <div class="flex items-center gap-3">
+                            <div class="h-11 w-11 rounded-xl bg-blue-50 text-brand flex items-center justify-center"><i class="fa-solid fa-users"></i></div>
+                            <div>
+                                <p class="text-sm text-slate-500">Total Users</p>
+                                <h4 class="text-xl font-extrabold text-slate-900">{{ total_users|default:0 }}</h4>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+                        <div class="flex items-center gap-3">
+                            <div class="h-11 w-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-user-check"></i></div>
+                            <div>
+                                <p class="text-sm text-slate-500">Active Users</p>
+                                <h4 class="text-xl font-extrabold text-slate-900">{{ active_users|default:0 }}</h4>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+                        <div class="flex items-center gap-3">
+                            <div class="h-11 w-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-hard-hat"></i></div>
+                            <div>
+                                <p class="text-sm text-slate-500">Handlers</p>
+                                <h4 class="text-xl font-extrabold text-slate-900">{{ handler_count|default:0 }}</h4>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+                        <div class="flex items-center gap-3">
+                            <div class="h-11 w-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fa-solid fa-building"></i></div>
+                            <div>
+                                <p class="text-sm text-slate-500">Departments</p>
+                                <h4 class="text-xl font-extrabold text-slate-900">{{ departments|length|default:0 }}</h4>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add/Edit Department Modal -->
+    <div id="departmentModal" class="modal-overlay">
+        <div class="modal">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-slate-900" id="deptModalTitle">Add Department</h3>
+                <button onclick="closeModal('departmentModal')" class="h-10 w-10 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form method="post" action="{% url 'admin-settings' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" id="deptAction" value="add_department">
+                <input type="hidden" name="dept_id" id="deptId" value="">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block font-semibold text-slate-800 mb-2">Department Name</label>
+                        <input type="text" name="name" id="deptName" required placeholder="e.g. Customer Relations" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-800 mb-2">Default SLA Days</label>
+                        <input type="number" name="default_sla_days" id="deptSla" required min="0" value="7" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal('departmentModal')" class="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+                    <button type="submit" class="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-200/70">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Category Modal -->
+    <div id="categoryModal" class="modal-overlay">
+        <div class="modal">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-slate-900" id="catModalTitle">Add Category</h3>
+                <button onclick="closeModal('categoryModal')" class="h-10 w-10 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form method="post" action="{% url 'admin-settings' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" id="catAction" value="add_category">
+                <input type="hidden" name="cat_id" id="catId" value="">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block font-semibold text-slate-800 mb-2">Category Name</label>
+                        <input type="text" name="name" id="catName" required placeholder="e.g. Technical Issue" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-800 mb-2">Default SLA Days</label>
+                        <input type="number" name="default_sla_days" id="catSla" required min="0" value="7" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal('categoryModal')" class="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+                    <button type="submit" class="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-200/70">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+
+        function openSidebar() { sidebar.classList.remove('-translate-x-full'); sidebarBackdrop.classList.remove('hidden'); }
+        function closeSidebar() { sidebar.classList.add('-translate-x-full'); sidebarBackdrop.classList.add('hidden'); }
+        if (openSidebarBtn) openSidebarBtn.addEventListener('click', openSidebar);
+        if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        function editDepartment(id, name, sla) {
+            document.getElementById('deptAction').value = 'edit_department';
+            document.getElementById('deptId').value = id;
+            document.getElementById('deptName').value = name;
+            document.getElementById('deptSla').value = sla;
+            document.getElementById('deptModalTitle').textContent = 'Edit Department';
+            openModal('departmentModal');
+        }
+
+        function editCategory(id, name, sla) {
+            document.getElementById('catAction').value = 'edit_category';
+            document.getElementById('catId').value = id;
+            document.getElementById('catName').value = name;
+            document.getElementById('catSla').value = sla;
+            document.getElementById('catModalTitle').textContent = 'Edit Category';
+            openModal('categoryModal');
+        }
+
+        document.querySelectorAll('[onclick*="openModal"]').forEach(btn => {
+            const original = btn.onclick;
+            btn.onclick = function(e) {
+                const modalId = original.toString().match(/openModal\('(.+?)'\)/)?.[1];
+                if (modalId === 'departmentModal') {
+                    document.getElementById('deptAction').value = 'add_department';
+                    document.getElementById('deptId').value = '';
+                    document.getElementById('deptName').value = '';
+                    document.getElementById('deptSla').value = '7';
+                    document.getElementById('deptModalTitle').textContent = 'Add Department';
+                } else if (modalId === 'categoryModal') {
+                    document.getElementById('catAction').value = 'add_category';
+                    document.getElementById('catId').value = '';
+                    document.getElementById('catName').value = '';
+                    document.getElementById('catSla').value = '7';
+                    document.getElementById('catModalTitle').textContent = 'Add Category';
+                }
+                openModal(modalId);
+            };
+        });
+
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) this.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>

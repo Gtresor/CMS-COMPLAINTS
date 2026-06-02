@@ -1,0 +1,488 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management | RSSB CMS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: '#2563eb', page: '#f5f7fb' },
+                    boxShadow: { soft: '0 10px 30px rgba(15, 23, 42, 0.08)', card: '0 14px 34px rgba(15, 23, 42, 0.08)' },
+                    borderRadius: { '2xl': '1rem' },
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'] },
+                    animation: { floatIn: 'floatIn .45s ease forwards' },
+                    keyframes: { floatIn: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } } }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        html, body { background: #f5f7fb; scroll-behavior: smooth; }
+        .glass { background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(10px); }
+        /* Modal backdrop animation */
+        .modal-open { overflow: hidden; }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <div class="min-h-screen flex bg-page">
+        {% with active_page='user-management' %}
+            {% include 'includes/sidebar.html' %}
+        {% endwith %}
+
+        <!-- Main Content Area -->
+        <div class="flex-1 min-w-0 flex flex-col">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+                <div class="max-w-[1700px] mx-auto px-4 md:px-6 py-4 flex items-center gap-4">
+                    <button id="openSidebarBtn" class="lg:hidden h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-bars"></i></button>
+                    <div class="min-w-0">
+                        <p class="text-sm text-slate-500">Welcome back{% if user.is_authenticated %}, {{ user.first_name|default:user.username }}{% endif %}</p>
+                        <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">User Management</h2>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 space-y-6">
+                {% if messages %}<div class="space-y-3">{% for message in messages %}<div class="rounded-xl border px-4 py-3 text-sm font-semibold {% if message.tags == 'success' %}bg-emerald-50 text-emerald-700 border-emerald-200{% else %}bg-red-50 text-red-700 border-red-200{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+                <!-- SECTION 1 — Stat Cards -->
+                <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Total Users -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-soft p-5 border-l-4 border-blue-500 flex items-center gap-4 hover:shadow-card hover:-translate-y-0.5 transition-all animate-floatIn" style="animation-delay: 0.05s">
+                        <div class="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-users text-lg"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-3xl font-extrabold text-slate-900" id="cnt-total">{{ total_users|default:0 }}</p>
+                            <p class="text-sm text-slate-500 font-medium">Total Users</p>
+                        </div>
+                    </div>
+
+                    <!-- Active Users -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-soft p-5 border-l-4 border-emerald-500 flex items-center gap-4 hover:shadow-card hover:-translate-y-0.5 transition-all animate-floatIn" style="animation-delay: 0.1s">
+                        <div class="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user-check text-lg"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-3xl font-extrabold text-slate-900" id="cnt-active">{{ active_users|default:0 }}</p>
+                            <p class="text-sm text-slate-500 font-medium">Active Users</p>
+                        </div>
+                    </div>
+
+                    <!-- Handlers -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-soft p-5 border-l-4 border-amber-500 flex items-center gap-4 hover:shadow-card hover:-translate-y-0.5 transition-all animate-floatIn" style="animation-delay: 0.15s">
+                        <div class="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-headset text-lg"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-3xl font-extrabold text-slate-900" id="cnt-handlers">{{ handler_count|default:0 }}</p>
+                            <p class="text-sm text-slate-500 font-medium">Handlers</p>
+                        </div>
+                    </div>
+
+                    <!-- Inactive -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-soft p-5 border-l-4 border-red-500 flex items-center gap-4 hover:shadow-card hover:-translate-y-0.5 transition-all animate-floatIn" style="animation-delay: 0.2s">
+                        <div class="h-12 w-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user-slash text-lg"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-3xl font-extrabold text-slate-900" id="cnt-inactive">{{ inactive_users|default:0 }}</p>
+                            <p class="text-sm text-slate-500 font-medium">Inactive</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 2 — Filter Bar -->
+                <section class="bg-white rounded-2xl border border-slate-200 shadow-soft p-4 animate-floatIn" style="animation-delay: 0.25s">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Search -->
+                        <div class="relative flex-1 min-w-[200px]">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+                            <input type="text" id="searchInput" oninput="filterUsers()" placeholder="Search name or email..." class="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                        </div>
+
+                        <!-- Role Filter -->
+                        <select id="roleFilter" onchange="filterUsers()" class="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                            <option value="">All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="reviewer">Reviewer</option>
+                            <option value="registrar">Registrar</option>
+                            <option value="handler">Handler</option>
+                            <option value="viewer">Viewer</option>
+                        </select>
+
+                        <!-- Status Filter -->
+                        <select id="statusFilter" onchange="filterUsers()" class="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+
+                        <!-- Reset Button -->
+                        <button onclick="resetFilters()" class="h-10 rounded-xl border border-slate-200 px-4 text-slate-600 hover:bg-slate-50 transition-all text-sm" title="Reset filters">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+
+                        <!-- Add User Button (opens modal) -->
+                        <button onclick="openCreateModal()" class="h-10 rounded-xl bg-brand text-white px-4 font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200/70 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Add User
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Users Table -->
+                <section class="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden animate-floatIn" style="animation-delay: 0.1s">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center"><h3 class="text-lg font-bold text-slate-900">All Users</h3></div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left" id="usersTable">
+                            <thead class="bg-slate-50 text-slate-600 font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Username</th>
+                                    <th class="px-6 py-3">Name</th>
+                                    <th class="px-6 py-3">Email / Phone</th>
+                                    <th class="px-6 py-3">Role</th>
+                                    <th class="px-6 py-3">Status</th>
+                                    <th class="px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for u in users %}
+                                <tr class="hover:bg-slate-50/50 transition-colors user-row" data-username="{{ u.username|lower }}" data-email="{{ u.email|lower }}" data-role="{{ u.role }}" data-status="{% if u.is_active %}active{% else %}inactive{% endif %}">
+                                    <td class="px-6 py-4 font-bold text-slate-900">{{ u.username }}</td>
+                                    <td class="px-6 py-4 text-slate-600">{{ u.get_full_name|default:'—' }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-slate-600">{{ u.email|default:'—' }}</div>
+                                        <div class="text-xs text-slate-400">{{ u.phone|default:'' }}</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold
+                                            {% if u.role == 'admin' %}bg-purple-100 text-purple-700
+                                            {% elif u.role == 'reviewer' %}bg-blue-100 text-blue-700
+                                            {% elif u.role == 'handler' %}bg-amber-100 text-amber-700
+                                            {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                            {{ u.get_role_display|default:u.role|capfirst }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold {% if u.is_active %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                                            {% if u.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        {% if request.user.role == 'admin' %}
+                                        <div class="relative action-dropdown">
+                                            <!-- 3-dot trigger -->
+                                            <button onclick="toggleDropdown(this)" class="h-8 w-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all" title="Actions">
+                                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                                            </button>
+                                            <!-- Dropdown menu -->
+                                            <div class="hidden absolute right-0 top-full mt-1 w-44 rounded-xl border border-slate-200 bg-white shadow-lg z-20 overflow-hidden py-1">
+                                                <!-- Edit -->
+                                                <button type="button" onclick="openEditModal({{ u.id }}); closeDropdown(this)" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-brand transition-all text-left">
+                                                    <i class="fa-solid fa-pen text-xs w-4 text-center text-brand"></i>
+                                                    Edit
+                                                </button>
+                                                <!-- Toggle Active/Inactive -->
+                                                <form method="post">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="toggle_active">
+                                                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                                                    <button type="submit" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all text-left {% if u.is_active %}text-amber-600 hover:bg-amber-50{% else %}text-emerald-600 hover:bg-emerald-50{% endif %}">
+                                                        <i class="fa-solid {% if u.is_active %}fa-ban{% else %}fa-check{% endif %} text-xs w-4 text-center"></i>
+                                                        {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                                                    </button>
+                                                </form>
+                                                <!-- Delete -->
+                                                <form method="post" onsubmit="return confirm('Are you sure you want to delete user {{ u.username }}? This action cannot be undone.');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                                                    <button type="submit" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all text-left">
+                                                        <i class="fa-solid fa-trash-can text-xs w-4 text-center"></i>
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">No users found.</td></tr>{% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- ===== CREATE USER MODAL ===== -->
+    <div id="createModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeCreateModal()"></div>
+        <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl animate-floatIn max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b border-slate-100 rounded-t-2xl">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Create New User</h3>
+                        <p class="text-sm text-slate-500">Fill in the details to create a new user account</p>
+                    </div>
+                </div>
+                <button onclick="closeCreateModal()" class="h-9 w-9 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form method="post" class="p-6">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Username <span class="text-red-500">*</span></label>
+                        <input type="text" name="username" required class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">First Name</label>
+                        <input type="text" name="first_name" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Last Name</label>
+                        <input type="text" name="last_name" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Email Address</label>
+                        <input type="email" name="email" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Phone Number</label>
+                        <input type="tel" name="phone" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Password <span class="text-red-500">*</span></label>
+                        <input type="password" name="password" required class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Role</label>
+                        <select name="role" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                            {% for value, label in role_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Status</label>
+                        <select name="is_active" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                            <option value="on" selected>Active</option>
+                            <option value="off">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex items-center gap-3 justify-end border-t border-slate-100 pt-4">
+                    <button type="button" onclick="closeCreateModal()" class="h-11 px-6 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+                    <button type="submit" class="h-11 px-6 rounded-xl bg-brand text-white text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200/70">
+                        <i class="fa-solid fa-plus mr-1"></i> Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== EDIT USER MODAL ===== -->
+    <div id="editModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeEditModal()"></div>
+        <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl animate-floatIn max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b border-slate-100 rounded-t-2xl">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-blue-50 text-brand flex items-center justify-center">
+                        <i class="fa-solid fa-pen"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Edit User</h3>
+                        <p class="text-sm text-slate-500">Update user details — <span id="editModalUsername" class="font-semibold text-brand"></span></p>
+                    </div>
+                </div>
+                <button onclick="closeEditModal()" class="h-9 w-9 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form method="post" class="p-6">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="user_id" id="editUserId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Username</label>
+                        <input type="text" name="username" id="editUsername" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                        <p class="text-xs text-slate-400 mt-1 ml-1">Username can only be changed by admins</p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">First Name</label>
+                        <input type="text" name="first_name" id="editFirstName" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Last Name</label>
+                        <input type="text" name="last_name" id="editLastName" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Email Address</label>
+                        <input type="email" name="email" id="editEmail" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Phone Number</label>
+                        <input type="tel" name="phone" id="editPhone" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">Role</label>
+                        <select name="role" id="editRole" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                            {% for value, label in role_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-1 block">New Password <span class="text-slate-400 font-normal normal-case">(optional)</span></label>
+                        <input type="password" name="new_password" placeholder="Leave blank to keep current" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all">
+                            <input type="checkbox" name="is_active" id="editIsActive" class="h-5 w-5 rounded border-slate-300 text-brand focus:ring-brand/20">
+                            <span class="font-medium">Active account</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="mt-6 flex items-center gap-3 justify-end border-t border-slate-100 pt-4">
+                    <button type="button" onclick="closeEditModal()" class="h-11 px-6 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+                    <button type="submit" class="h-11 px-6 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-all">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ===== Sidebar =====
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        const openBtn = document.getElementById('openSidebarBtn');
+        const toggle = () => { sidebar.classList.toggle('-translate-x-full'); backdrop.classList.toggle('hidden'); }
+        if (openBtn) openBtn.addEventListener('click', toggle);
+        if (backdrop) backdrop.addEventListener('click', toggle);
+
+        // ===== Client-side filtering =====
+        function filterUsers() {
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const role = document.getElementById('roleFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const rows = document.querySelectorAll('.user-row');
+
+            rows.forEach(row => {
+                const username = row.getAttribute('data-username');
+                const email = row.getAttribute('data-email') || '';
+                const rowRole = row.getAttribute('data-role');
+                const rowStatus = row.getAttribute('data-status');
+
+                const matchesSearch = !search || username.includes(search) || email.includes(search);
+                const matchesRole = !role || rowRole === role;
+                const matchesStatus = !status || rowStatus === status;
+
+                row.style.display = matchesSearch && matchesRole && matchesStatus ? '' : 'none';
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('roleFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            filterUsers();
+        }
+
+        // ===== Create Modal =====
+        function openCreateModal() {
+            document.getElementById('createModal').classList.remove('hidden');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        }
+
+        // ===== Edit Modal =====
+        // Inline JSON of all users for the edit modal
+        const usersData = [
+            {% for u in users %}
+            {
+                id: {{ u.id }},
+                username: "{{ u.username|escapejs }}",
+                first_name: "{{ u.first_name|escapejs }}",
+                last_name: "{{ u.last_name|escapejs }}",
+                email: "{{ u.email|escapejs }}",
+                phone: "{{ u.phone|escapejs }}",
+                role: "{{ u.role|escapejs }}",
+                is_active: {% if u.is_active %}true{% else %}false{% endif %}
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        function openEditModal(userId) {
+            const user = usersData.find(u => u.id === userId);
+            if (!user) return;
+
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editModalUsername').textContent = user.username;
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editFirstName').value = user.first_name;
+            document.getElementById('editLastName').value = user.last_name;
+            document.getElementById('editEmail').value = user.email;
+            document.getElementById('editPhone').value = user.phone;
+            document.getElementById('editRole').value = user.role;
+            document.getElementById('editIsActive').checked = user.is_active;
+
+            document.getElementById('editModal').classList.remove('hidden');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        }
+
+        // ===== Dropdown toggle =====
+        function toggleDropdown(btn) {
+            // Close all other dropdowns
+            document.querySelectorAll('.action-dropdown > div:not(.hidden)').forEach(d => {
+                if (d.closest('.action-dropdown') !== btn.closest('.action-dropdown')) {
+                    d.classList.add('hidden');
+                }
+            });
+            const menu = btn.nextElementSibling;
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        function closeDropdown(btn) {
+            const menu = btn.closest('.action-dropdown > div');
+            if (menu) menu.classList.add('hidden');
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-dropdown')) {
+                document.querySelectorAll('.action-dropdown > div:not(.hidden)').forEach(d => {
+                    d.classList.add('hidden');
+                });
+            }
+        });
+
+        // Close modals on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeCreateModal();
+                closeEditModal();
+            }
+        });
+    </script>
+</body>
+</html>

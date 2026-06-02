@@ -1,0 +1,128 @@
+{% load static %}
+<aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-40 h-screen w-[280px] shrink-0 -translate-x-full lg:translate-x-0 transition-transform duration-300 bg-white/95 border-r border-slate-200 shadow-soft flex flex-col">
+    <div class="px-6 py-6 border-b border-slate-100">
+        <div class="flex items-center gap-3">
+            <img src="{% static 'images/logo_RSSB.png' %}" alt="RSSB" class="h-10 w-10 rounded-xl object-contain bg-slate-100 p-1">
+            <div>
+                <h1 class="text-lg font-extrabold tracking-tight text-slate-900">RSSB Admin</h1>
+                <p class="text-xs text-slate-500">Premium Control Center</p>
+            </div>
+        </div>
+    </div>
+
+    <nav class="px-4 py-5 flex-1 overflow-y-auto">
+        <ul class="space-y-2 text-[15px]">
+            {% if request.user.role == 'admin' %}
+                <li>
+                    <a href="{% url 'admin-dashboard' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'dashboard' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-table-columns text-sm"></i>
+                        <span class="font-medium">Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'admin-all-complaints' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'all-complaints' or active_page == 'handle-complaint' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-list-check text-sm"></i>
+                        <span class="font-medium">All Complaints</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'complaint-register' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'register-complaint' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-file-circle-plus text-sm"></i>
+                        <span class="font-medium">Register Complaint</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'admin-user-management' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'user-management' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-users text-sm"></i>
+                        <span class="font-medium">User Management</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'admin-analytics' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'analytics' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-chart-line text-sm"></i>
+                        <span class="font-medium">Analytics</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'notifications-page' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'notifications' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-bell text-sm"></i>
+                        <span class="font-medium">Notifications</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'admin-settings' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'settings' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-gear text-sm"></i>
+                        <span class="font-medium">Settings</span>
+                    </a>
+                </li>
+            {% elif request.user.role == 'handler' %}
+                <li>
+                    <a href="{% url 'handler-dashboard' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'dashboard' or active_page == 'handle-complaint' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-inbox text-sm"></i>
+                        <span class="font-medium">My Complaints</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'notifications-page' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'notifications' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-bell text-sm"></i>
+                        <span class="font-medium">Notifications</span>
+                    </a>
+                </li>
+            {% elif request.user.role == 'registrar' %}
+                <li>
+                    <a href="{% url 'registrar-dashboard' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'dashboard' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-table-columns text-sm"></i>
+                        <span class="font-medium">Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'complaint-register' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'register-complaint' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-file-circle-plus text-sm"></i>
+                        <span class="font-medium">Register Complaint</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'registrar-dashboard' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'all-complaints' or active_page == 'handle-complaint' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-list-check text-sm"></i>
+                        <span class="font-medium">All Complaints</span>
+                    </a>
+                </li>
+            {% elif request.user.role == 'reviewer' %}
+                <li>
+                    <a href="{% url 'reviewer-dashboard' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'dashboard' or active_page == 'handle-complaint' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-table-columns text-sm"></i>
+                        <span class="font-medium">Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'complaint-register' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'register-complaint' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-file-circle-plus text-sm"></i>
+                        <span class="font-medium">Register Complaint</span>
+                    </a>
+                </li>
+            {% else %}
+                <li>
+                    <a href="{% url 'complaint-register' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all {% if active_page == 'register-complaint' %}bg-brand text-white shadow-md shadow-blue-200/70{% else %}text-slate-700 hover:bg-blue-50 hover:text-brand{% endif %}">
+                        <i class="fa-solid fa-file-circle-plus text-sm"></i>
+                        <span class="font-medium">Register Complaint</span>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    <div class="p-4 border-t border-slate-100">
+        <div class="rounded-2xl glass border border-slate-200 p-4 shadow-sm text-sm">
+            <a href="{% url 'user-profile' %}" class="flex items-center gap-3 mb-3 hover:opacity-80 transition-opacity">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-brand to-blue-400 text-white font-bold flex items-center justify-center shrink-0">{{ user.get_full_name|default:user.username|first|upper }}</div>
+                <div class="min-w-0">
+                    <p class="font-semibold text-slate-900 truncate">{{ user.get_full_name|default:user.username }}</p>
+                    <p class="text-[11px] text-slate-500 uppercase font-bold">{{ user.role }}</p>
+                </div>
+            </a>
+            <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 text-red-600 px-3 py-2 font-semibold hover:bg-red-100 transition-all"><i class="fa-solid fa-right-from-bracket text-xs"></i> Logout</button></form>
+        </div>
+    </div>
+</aside>
+
+<div id="sidebarBackdrop" class="fixed inset-0 bg-slate-900/35 z-30 hidden lg:hidden"></div>

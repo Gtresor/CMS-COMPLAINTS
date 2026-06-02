@@ -1,0 +1,422 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handle Complaint | RSSB CMS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#2563eb',
+                        page: '#f5f7fb',
+                    },
+                    boxShadow: {
+                        soft: '0 10px 30px rgba(15, 23, 42, 0.08)',
+                        card: '0 12px 32px rgba(15, 23, 42, 0.08)',
+                    },
+                    borderRadius: {
+                        '2xl': '1rem',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    },
+                    keyframes: {
+                        floatIn: {
+                            '0%': { opacity: '0', transform: 'translateY(14px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                    },
+                    animation: {
+                        floatIn: 'floatIn 0.5s ease forwards',
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        html, body {
+            background: #f5f7fb;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #e5e7eb;
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c7d2fe;
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #93c5fd;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(10px);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.45rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge.status-new { background: #EFF6FF; color: #2563eb; }
+        .badge.status-under_review { background: #E0F2FE; color: #0C4A6E; }
+        .badge.status-assigned { background: #E0E7FF; color: #3730A3; }
+        .badge.status-in_progress { background: #DBEAFE; color: #1D4ED8; }
+        .badge.status-pending_info { background: #FEF3C7; color: #B45309; }
+        .badge.status-resolved { background: #ECFDF5; color: #059669; }
+        .badge.status-closed { background: #FEF2F2; color: #DC2626; }
+        .badge.priority-high { background: #FEE2E2; color: #DC2626; }
+        .badge.priority-medium { background: #FEF3C7; color: #F59E0B; }
+        .badge.priority-low { background: #EFF6FF; color: #2563eb; }
+
+        .alert {
+            display: grid;
+            gap: 0.5rem;
+            padding: 16px 18px;
+            border-radius: 18px;
+            border: 1px solid transparent;
+            font-weight: 700;
+        }
+
+        .alert-success {
+            background: #DCFCE7;
+            border-color: #86EFAC;
+            color: #166534;
+        }
+
+        .alert-danger {
+            background: #FEE2E2;
+            border-color: #FCA5A5;
+            color: #B91C1C;
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <div class="min-h-screen flex bg-page">
+        {% with active_page='handle-complaint' %}
+            {% include 'includes/sidebar.html' %}
+        {% endwith %}
+
+        <div class="flex-1 min-w-0">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+                <div class="max-w-[1600px] mx-auto px-4 md:px-6 py-4">
+                    <div class="flex flex-wrap lg:flex-nowrap items-center gap-3 md:gap-4 justify-between">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <button id="openSidebarBtn" class="lg:hidden h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" aria-label="Open sidebar">
+                                <i class="fa-solid fa-bars"></i>
+                            </button>
+                            <div class="min-w-0">
+                                <p class="text-sm text-slate-500">Handle Complaint</p>
+                                <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">{{ complaint.case_number }}</h2>
+                                <p class="text-xs text-slate-400">{{ complaint.complaint_title }}</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full lg:w-auto flex flex-wrap items-center gap-2 md:gap-3">
+                            <span class="badge status-{{ complaint.status }}" style="font-size:0.85rem;">{{ complaint.get_status_display }}</span>
+                            <span class="badge priority-{{ complaint.priority|default:'low'|lower }}" style="font-size:0.85rem;text-transform:capitalize;">{{ complaint.priority|default:'Low' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-[1600px] mx-auto px-4 md:px-6 py-6 space-y-6">
+                {% if messages %}
+                    <div class="space-y-3">
+                        {% for message in messages %}
+                            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %}">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid {% if message.tags == 'success' %}fa-check-circle{% else %}fa-exclamation-circle{% endif %}"></i>
+                                    <span>{{ message }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
+                    <div class="space-y-6">
+                        <!-- Action Tracking -->
+                        <article class="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-card">
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="badge status-{{ complaint.status }}" style="font-size:0.85rem;">{{ complaint.get_status_display }}</span>
+                                <h4 class="text-base md:text-lg font-bold text-slate-900">Action Tracking</h4>
+                            </div>
+
+                            {% if complaint.has_action_taken %}
+                                <div class="flex gap-3 items-center p-4 rounded-2xl border border-emerald-400 bg-emerald-50 text-emerald-700">
+                                    <i class="fa-solid fa-check-circle text-xl"></i>
+                                    <div>
+                                        <p class="font-bold">Action Taken</p>
+                                        <p class="text-sm text-slate-700">Action has been recorded for this complaint.</p>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="flex gap-3 items-center p-4 rounded-2xl border border-red-400 bg-red-50 text-red-700">
+                                    <i class="fa-solid fa-clock text-xl"></i>
+                                    <div>
+                                        <p class="font-bold">No Action Taken Yet</p>
+                                        <p class="text-sm text-slate-700">Pending action is required before closing this complaint.</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if actions %}
+                                <div class="space-y-4 mt-4">
+                                    {% for action in actions %}
+                                        <div class="border border-slate-200 rounded-2xl p-4 bg-page">
+                                            <div class="flex justify-between gap-3 flex-wrap items-center">
+                                                <div class="text-sm text-slate-500">
+                                                    <strong class="text-slate-800">{{ action.previous_status|title }}</strong>
+                                                    <i class="fa-solid fa-arrow-right mx-2 text-xs"></i>
+                                                    <strong class="text-slate-800">{{ action.new_status|title }}</strong>
+                                                </div>
+                                                <span class="badge {% if action.action_taken %}status-resolved{% else %}status-pending_info{% endif %}" style="font-size:0.75rem;">{% if action.action_taken %}Action Taken{% else %}No Action{% endif %}</span>
+                                            </div>
+                                            {% if action.action_description %}
+                                                <p class="mt-3 text-slate-800 leading-relaxed">{{ action.action_description }}</p>
+                                            {% endif %}
+                                            <p class="mt-3 text-xs text-slate-400"><i class="fa-regular fa-user mr-1"></i> {% if action.handler %}{{ action.handler.get_full_name|default:action.handler.username }}{% else %}Unknown{% endif %} · <i class="fa-regular fa-clock mx-1"></i> {{ action.created_at|date:'M d, Y H:i' }}</p>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </article>
+
+                        <!-- Update Complaint -->
+                        <article class="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-card">
+                            <div class="flex items-center gap-3 mb-4">
+                                <i class="fa-solid fa-pen-to-square text-brand text-lg"></i>
+                                <h4 class="text-base md:text-lg font-bold text-slate-900">Update Complaint</h4>
+                            </div>
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="mb-4">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" name="action_taken" id="actionTakenCheck" class="w-5 h-5 rounded border-slate-300 text-brand focus:ring-brand">
+                                        <span class="font-semibold text-slate-800">Mark action as taken</span>
+                                    </label>
+                                    <p class="mt-1 text-sm text-slate-400 ml-8">Check this only if you have taken action on this complaint.</p>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="actionDescription" class="block font-semibold text-slate-800 mb-2">Action Description</label>
+                                    <textarea id="actionDescription" name="action_description" rows="4" placeholder="Describe the action taken..." class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"></textarea>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="statusSelect" class="block font-semibold text-slate-800 mb-2">Update Status</label>
+                                    <select id="statusSelect" name="status" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
+                                        <option value="">Keep current ({{ complaint.status|title }})</option>
+                                        <option value="in_progress" {% if complaint.status == 'in_progress' %}disabled{% endif %}>In Progress</option>
+                                        <option value="pending_info" {% if complaint.status == 'pending_info' %}disabled{% endif %}>Pending Info</option>
+                                        <option value="resolved" {% if complaint.status == 'resolved' %}disabled{% endif %}>Resolved</option>
+                                        {% if complaint.has_action_taken %}
+                                            <option value="closed" {% if complaint.status == 'closed' %}disabled{% endif %}>Closed</option>
+                                        {% else %}
+                                            <option value="closed" disabled style="color:#999;">Closed (requires action taken first)</option>
+                                        {% endif %}
+                                    </select>
+                                    {% if not complaint.has_action_taken %}
+                                        <p class="mt-2 text-xs text-red-600"><i class="fa-solid fa-info-circle mr-1"></i>Closed is disabled until action is taken.</p>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="noteText" class="block font-semibold text-slate-800 mb-2">Add Note (Optional)</label>
+                                    <textarea id="noteText" name="note" rows="3" placeholder="Add a note about this update..." class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"></textarea>
+                                </div>
+
+                                <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3.5 text-sm font-bold text-white hover:bg-blue-700 shadow-md shadow-blue-200/70 transition-all">Save Update</button>
+                            </form>
+                        </article>
+
+                        <!-- Complaint Details -->
+                        <article class="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-card">
+                            <div class="flex items-center gap-3 mb-4">
+                                <i class="fa-solid fa-circle-info text-brand text-lg"></i>
+                                <h4 class="text-base md:text-lg font-bold text-slate-900">Complaint Details</h4>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between gap-4 pb-2.5 border-b border-slate-100">
+                                    <span class="text-slate-500">Case Number</span>
+                                    <strong class="text-slate-800 text-right">{{ complaint.case_number }}</strong>
+                                </div>
+                                <div class="flex justify-between gap-4 pb-2.5 border-b border-slate-100">
+                                    <span class="text-slate-500">System Code</span>
+                                    <strong class="text-slate-800 text-right">{{ complaint.system_code }}</strong>
+                                </div>
+                                <div class="flex justify-between gap-4 pb-2.5 border-b border-slate-100">
+                                    <span class="text-slate-500">Complainant</span>
+                                    <strong class="text-slate-800 text-right">{{ complaint.full_name }}</strong>
+                                </div>
+                                <div class="flex justify-between gap-4 pb-2.5 border-b border-slate-100">
+                                    <span class="text-slate-500">Phone</span>
+                                    <strong class="text-slate-800 text-right">{{ complaint.phone_number }}</strong>
+                                </div>
+                                <div class="flex justify-between gap-4 pb-2.5 border-b border-slate-100">
+                                    <span class="text-slate-500">Title</span>
+                                    <strong class="text-slate-800 text-right">{{ complaint.complaint_title }}</strong>
+                                </div>
+                                <div class="flex justify-between gap-4 pb-2.5 border-b border-slate-100">
+                                    <span class="text-slate-500">Complaint Date</span>
+                                    <strong class="text-slate-800 text-right">{{ complaint.complaint_date|date:'M d, Y' }}</strong>
+                                </div>
+                                <div class="flex justify-between gap-4 pb-2.5 border-b border-slate-100">
+                                    <span class="text-slate-500">Source</span>
+                                    <strong class="text-slate-800 text-right">{{ complaint.complaint_source|title }}</strong>
+                                </div>
+                                <div class="flex justify-between gap-4">
+                                    <span class="text-slate-500">Response Due</span>
+                                    <strong class="text-slate-800 text-right">{{ complaint.response_due_days }} Days</strong>
+                                </div>
+                            </div>
+                            {% if complaint.description %}
+                                <div class="mt-5 pt-5 border-t border-slate-100">
+                                    <p class="font-bold text-slate-800 mb-2">Description</p>
+                                    <p class="text-slate-500 leading-relaxed">{{ complaint.description }}</p>
+                                </div>
+                            {% endif %}
+                        </article>
+
+                        <!-- Notes -->
+                        <article class="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-card">
+                            <div class="flex items-center gap-3 mb-4">
+                                <i class="fa-solid fa-comments text-brand text-lg"></i>
+                                <h4 class="text-base md:text-lg font-bold text-slate-900">Notes ({{ notes|length }})</h4>
+                            </div>
+                            {% if notes %}
+                                <div class="space-y-4">
+                                    {% for note in notes %}
+                                        <div class="p-4 rounded-2xl bg-page border border-slate-200">
+                                            <div class="flex justify-between gap-3 flex-wrap items-center mb-3">
+                                                <div class="flex items-center gap-2.5 min-w-0">
+                                                    <div class="w-9 h-9 rounded-full bg-brand text-white grid place-items-center font-bold text-sm shrink-0">{% if note.author %}{{ note.author.username|first|upper }}{% else %}?{% endif %}</div>
+                                                    <div class="min-w-0">
+                                                        <strong class="block text-slate-800 text-sm truncate">{% if note.author %}{{ note.author.get_full_name|default:note.author.username }}{% else %}Unknown{% endif %}</strong>
+                                                    </div>
+                                                </div>
+                                                <span class="text-xs text-slate-400">{{ note.created_at|date:'M d, Y H:i' }}</span>
+                                            </div>
+                                            <p class="text-slate-700 leading-relaxed">{{ note.note }}</p>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-slate-400 text-center py-5">No notes added yet.</p>
+                            {% endif %}
+                        </article>
+                    </div>
+
+                    <!-- Right Sidebar -->
+                    <aside class="space-y-6">
+                        <article class="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-card">
+                            <div class="flex items-center gap-3 mb-4">
+                                <i class="fa-solid fa-clipboard-list text-brand text-lg"></i>
+                                <h4 class="text-base font-bold text-slate-900">Complaint Summary</h4>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500 text-sm">Case Number</span>
+                                    <strong class="text-slate-800 text-sm">{{ complaint.case_number }}</strong>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500 text-sm">System Code</span>
+                                    <strong class="text-slate-800 text-sm">{{ complaint.system_code }}</strong>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500 text-sm">Handler</span>
+                                    <strong class="text-slate-800 text-sm">{% if complaint.assigned_to %}{{ complaint.assigned_to.get_full_name|default:complaint.assigned_to.username }}{% else %}Unassigned{% endif %}</strong>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500 text-sm">Registered</span>
+                                    <strong class="text-slate-800 text-sm">{{ complaint.registered_at|date:'M d, Y H:i' }}</strong>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500 text-sm">Response Due</span>
+                                    <strong class="text-slate-800 text-sm">{{ complaint.response_due_days }} days</strong>
+                                </div>
+                            </div>
+                            <a href="{% if request.user.role == 'admin' %}{% url 'admin-all-complaints' %}{% elif request.user.role == 'reviewer' %}{% url 'reviewer-dashboard' %}{% else %}{% url 'handler-dashboard' %}{% endif %}" class="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 px-4 py-2.5 text-sm font-semibold text-brand hover:bg-blue-50 transition-all">Back to Dashboard</a>
+                        </article>
+
+                        <article class="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-card">
+                            <div class="flex items-center gap-3 mb-4">
+                                <i class="fa-solid fa-paperclip text-brand text-lg"></i>
+                                <h4 class="text-base font-bold text-slate-900">Attachments ({{ attachments|length }})</h4>
+                            </div>
+                            {% if attachments %}
+                                <div class="space-y-3">
+                                    {% for att in attachments %}
+                                        <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-page border border-slate-200">
+                                            <i class="fa-regular fa-file text-brand text-lg"></i>
+                                            <div class="min-w-0 flex-1 overflow-hidden">
+                                                <div class="text-sm font-bold text-slate-800 truncate">{{ att.file.name|cut:'complaints/'|cut:'/' }}</div>
+                                                <div class="text-xs text-slate-400">{{ att.uploaded_at|date:'M d, Y' }}</div>
+                                            </div>
+                                            <a href="{{ att.file.url }}" target="_blank" class="shrink-0 rounded-xl bg-brand px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-all">Download</a>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-slate-400 text-center py-4">No attachments added.</p>
+                            {% endif %}
+                        </article>
+                    </aside>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarBackdrop.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            sidebarBackdrop.classList.add('hidden');
+        }
+
+        if (openSidebarBtn) openSidebarBtn.addEventListener('click', openSidebar);
+        if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const actionCheck = document.getElementById('actionTakenCheck');
+            const statusSelect = document.querySelector('select[name="status"]');
+            if (!actionCheck || !statusSelect) return;
+            actionCheck.addEventListener('change', function() {
+                // backend validation handles status eligibility
+            });
+        });
+    </script>
+</body>
+</html>

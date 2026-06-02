@@ -1,0 +1,354 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handler Dashboard | RSSB CMS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#2563eb',
+                        page: '#f5f7fb',
+                    },
+                    boxShadow: {
+                        soft: '0 10px 30px rgba(15, 23, 42, 0.08)',
+                        card: '0 12px 32px rgba(15, 23, 42, 0.08)',
+                    },
+                    borderRadius: {
+                        '2xl': '1rem',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    },
+                    keyframes: {
+                        floatIn: {
+                            '0%': { opacity: '0', transform: 'translateY(14px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                    },
+                    animation: {
+                        floatIn: 'floatIn 0.5s ease forwards',
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        html, body {
+            background: #f5f7fb;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #e5e7eb;
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c7d2fe;
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #93c5fd;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(10px);
+        }
+        .notif-badge-dash { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; border-radius: 10px; background: #DC2626; color: white; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-shadow: 0 0 0 3px white; }
+        .notif-dropdown-dash { position: absolute; top: calc(100% + 8px); right: 0; width: 380px; max-height: 480px; background: white; border: 1px solid #E2E8F5; border-radius: 18px; box-shadow: 0 20px 50px rgba(15,23,42,0.15); z-index: 100; overflow: hidden; animation: floatIn 0.2s ease both; }
+        .notif-dropdown-header-dash { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #E2E8F5; }
+        .notif-dropdown-list-dash { max-height: 360px; overflow-y: auto; }
+        .notif-dropdown-item-dash { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #E2E8F5; transition: background-color 0.15s ease; cursor: pointer; }
+        .notif-dropdown-item-dash:hover { background: #F0F4FF; }
+        .notif-dropdown-item-dash.unread { background: rgba(37,99,235,0.04); }
+        .notif-dropdown-item-dash .item-icon-dash { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; font-size: 0.9rem; }
+        .notif-dropdown-item-dash .item-icon-dash.info { background: #EFF6FF; color: #2563eb; }
+        .notif-dropdown-item-dash .item-icon-dash.warning { background: #FEF3C7; color: #B45309; }
+        .notif-dropdown-item-dash .item-icon-dash.critical { background: #FEE2E2; color: #DC2626; }
+        .notif-dropdown-item-dash .item-body-dash { flex: 1; min-width: 0; }
+        .notif-dropdown-item-dash .item-message-dash { margin: 0; font-size: 0.85rem; color: #0F1F3D; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .notif-dropdown-item-dash .item-meta-dash { font-size: 0.75rem; color: #8E97B4; margin-top: 2px; }
+        .notif-dropdown-footer-dash { border-top: 1px solid #E2E8F5; }
+        .notif-dropdown-footer-dash a:hover { background: #F0F4FF; }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <div class="min-h-screen flex bg-page">
+        {% with active_page='dashboard' %}
+            {% include 'includes/sidebar.html' %}
+        {% endwith %}
+
+        <div class="flex-1 min-w-0">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+                <div class="max-w-[1600px] mx-auto px-4 md:px-6 py-4">
+                    <div class="flex flex-wrap lg:flex-nowrap items-center gap-3 md:gap-4 justify-between">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <button id="openSidebarBtn" class="lg:hidden h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" aria-label="Open sidebar">
+                                <i class="fa-solid fa-bars"></i>
+                            </button>
+                            <div class="min-w-0">
+                                <p class="text-sm text-slate-500">Welcome back{% if user.is_authenticated %}, {{ user.first_name|default:user.username }}{% endif %}</p>
+                                <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">Handler Dashboard</h2>
+                            </div>
+                        </div>
+
+                        <div class="w-full lg:w-auto flex flex-wrap items-center gap-2 md:gap-3">
+                            <div class="notif-wrapper-dash" style="position: relative;">
+                                <button id="notifBellDash" class="relative h-11 w-11 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-brand hover:bg-blue-50 transition-all" aria-label="Notifications">
+                                    <i class="fa-regular fa-bell"></i>
+                                    <span id="notifBadgeDash" class="notif-badge-dash" style="display: none;">0</span>
+                                </button>
+                                <div id="notifDropdownDash" class="notif-dropdown-dash" style="display: none;">
+                                    <div class="notif-dropdown-header-dash">
+                                        <span style="font-weight: 700; font-size: 0.95rem;">Notifications</span>
+                                        <button id="dropdownMarkAllReadDash" style="background: none; border: none; color: #2563eb; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Mark all read</button>
+                                    </div>
+                                    <div id="notifDropdownListDash" class="notif-dropdown-list-dash">
+                                        <div style="text-align: center; padding: 20px; color: #8E97B4;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+                                    </div>
+                                    <div class="notif-dropdown-footer-dash">
+                                        <a href="/api/notifications/page/" style="display: block; text-align: center; padding: 10px; color: #2563eb; font-weight: 600; text-decoration: none;">View All Notifications <i class="fa-solid fa-arrow-right"></i></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-[1600px] mx-auto px-4 md:px-6 py-6 space-y-6">
+                <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
+                    <article class="animate-floatIn rounded-2xl border border-slate-200 bg-white p-5 shadow-card hover:-translate-y-1 hover:shadow-lg transition-all border-t-4 border-t-brand">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-sm text-slate-500">Assigned</p>
+                                <h3 class="mt-2 text-3xl font-extrabold text-slate-900">{{ assigned_count|default:0 }}</h3>
+                                <p class="mt-1 text-xs text-slate-500">Cases assigned to you</p>
+                            </div>
+                            <div class="h-11 w-11 rounded-xl bg-blue-50 text-brand flex items-center justify-center">
+                                <i class="fa-solid fa-inbox"></i>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="animate-floatIn rounded-2xl border border-slate-200 bg-white p-5 shadow-card hover:-translate-y-1 hover:shadow-lg transition-all border-t-4 border-t-red-500" style="animation-delay: .05s;">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-sm text-slate-500">Overdue</p>
+                                <h3 class="mt-2 text-3xl font-extrabold text-slate-900">{{ overdue_count|default:0 }}</h3>
+                                <p class="mt-1 text-xs text-slate-500">Beyond SLA deadlines</p>
+                            </div>
+                            <div class="h-11 w-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="animate-floatIn rounded-2xl border border-slate-200 bg-white p-5 shadow-card hover:-translate-y-1 hover:shadow-lg transition-all border-t-4 border-t-emerald-500" style="animation-delay: .1s;">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-sm text-slate-500">Resolved</p>
+                                <h3 class="mt-2 text-3xl font-extrabold text-slate-900">{{ resolved_count|default:0 }}</h3>
+                                <p class="mt-1 text-xs text-slate-500">Successfully closed cases</p>
+                            </div>
+                            <div class="h-11 w-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+                    <div class="px-5 md:px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
+                        <div>
+                            <h3 class="text-base md:text-lg font-bold text-slate-900">My Assigned Complaints</h3>
+                            <p class="text-sm text-slate-500">Cases assigned to you for handling</p>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-[980px] w-full text-sm">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Case Number</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Complainant</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Status</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Source</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Registered</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Response Due</th>
+                                    <th class="text-left font-semibold px-5 md:px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for complaint in assigned_complaints %}
+                                <tr class="border-t border-slate-100 hover:bg-slate-50/70 transition-all">
+                                    <td class="px-5 md:px-6 py-4 font-semibold text-brand">{{ complaint.case_number }}</td>
+                                    <td class="px-5 md:px-6 py-4 text-slate-700">{{ complaint.full_name|default:complaint.complainant_name }}</td>
+                                    <td class="px-5 md:px-6 py-4">
+                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold
+                                            {% if complaint.status == 'resolved' or complaint.status == 'closed' %}bg-emerald-100 text-emerald-700
+                                            {% elif complaint.status == 'in_progress' %}bg-indigo-100 text-indigo-700
+                                            {% elif complaint.status == 'assigned' %}bg-blue-100 text-blue-700
+                                            {% elif complaint.status == 'under_review' %}bg-cyan-100 text-cyan-700
+                                            {% elif complaint.status == 'pending_info' %}bg-amber-100 text-amber-700
+                                            {% elif complaint.status == 'pending' %}bg-slate-200 text-slate-700
+                                            {% else %}bg-slate-200 text-slate-700{% endif %}">
+                                            {{ complaint.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 md:px-6 py-4 text-slate-600">{{ complaint.complaint_source|default:complaint.source|capfirst }}</td>
+                                    <td class="px-5 md:px-6 py-4 text-slate-500">{{ complaint.date_entered_system|date:'M d, Y' }}</td>
+                                    <td class="px-5 md:px-6 py-4">
+                                        <span class="{% if complaint.is_overdue %}text-red-600 font-semibold{% else %}text-slate-600{% endif %}">
+                                            {% if complaint.is_overdue %}
+                                                <i class="fa-solid fa-exclamation-circle mr-1"></i>Overdue
+                                            {% else %}
+                                                {{ complaint.response_due_days }} days
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 md:px-6 py-4">
+                                        <a href="{% url 'complaint-handle' complaint.id %}" class="inline-flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-3 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-all">
+                                            <i class="fa-solid fa-hand"></i>
+                                            Handle
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="px-5 md:px-6 py-12 text-center">
+                                        <div class="inline-flex flex-col items-center gap-2 text-slate-500">
+                                            <div class="h-14 w-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                                                <i class="fa-solid fa-inbox text-lg"></i>
+                                            </div>
+                                            <p class="font-semibold text-slate-600">No complaints assigned to you</p>
+                                            <p class="text-sm">When a reviewer assigns a complaint to you, it will appear here.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarBackdrop.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            sidebarBackdrop.classList.add('hidden');
+        }
+
+        if (openSidebarBtn) openSidebarBtn.addEventListener('click', openSidebar);
+        if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+
+        // === Notification Dropdown ===
+        const bellDash = document.getElementById('notifBellDash');
+        const dropdownDash = document.getElementById('notifDropdownDash');
+        const dropdownListDash = document.getElementById('notifDropdownListDash');
+        const badgeDash = document.getElementById('notifBadgeDash');
+
+        if (bellDash) {
+            bellDash.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isOpen = dropdownDash.style.display === 'block';
+                dropdownDash.style.display = isOpen ? 'none' : 'block';
+                if (!isOpen) loadDropdownNotificationsDash();
+            });
+        }
+
+        document.addEventListener('click', function() {
+            if (dropdownDash) dropdownDash.style.display = 'none';
+        });
+
+        if (dropdownDash) {
+            dropdownDash.addEventListener('click', function(e) { e.stopPropagation(); });
+        }
+
+        function loadDropdownNotificationsDash() {
+            if (!dropdownListDash) return;
+            dropdownListDash.innerHTML = '<div style="text-align: center; padding: 20px; color: #8E97B4;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>';
+            fetch('/api/notifications/recent/', { headers: { 'Accept': 'application/json' } })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        dropdownListDash.innerHTML = '<div style="text-align: center; padding: 30px; color: #8E97B4;"><i class="fa-regular fa-bell-slash" style="font-size: 1.5rem; display: block; margin-bottom: 8px;"></i>No notifications</div>';
+                        return;
+                    }
+                    let html = '';
+                    data.forEach(n => {
+                        const cssClass = n.is_read ? '' : 'unread';
+                        let iconBg = 'info', iconName = 'fa-circle-info';
+                        if (n.severity === 'warning') { iconBg = 'warning'; iconName = n.severity_icon || 'fa-triangle-exclamation'; }
+                        else if (n.severity === 'critical') { iconBg = 'critical'; iconName = n.severity_icon || 'fa-circle-exclamation'; }
+                        else { iconName = n.severity_icon || 'fa-circle-info'; }
+                        html += `
+                            <div class="notif-dropdown-item-dash ${cssClass}" onclick="markNotifReadDash(${n.id})">
+                                <div class="item-icon-dash ${iconBg}">
+                                    <i class="fa-solid ${iconName}"></i>
+                                </div>
+                                <div class="item-body-dash">
+                                    <p class="item-message-dash">${n.message}</p>
+                                    <div class="item-meta-dash"><span>${n.time_ago}</span>${n.performed_by_name ? '<span> · ' + n.performed_by_name + '</span>' : ''}</div>
+                                </div>
+                                ${!n.is_read ? '<i class="fa-solid fa-circle" style="color: #2563eb; font-size: 0.5rem; margin-top: 6px; flex-shrink: 0;"></i>' : ''}
+                            </div>
+                        `;
+                    });
+                    dropdownListDash.innerHTML = html;
+                })
+                .catch(() => { dropdownListDash.innerHTML = '<div style="text-align: center; padding: 20px; color: #DC2626;">Failed to load</div>'; });
+        }
+
+        function markNotifReadDash(id) {
+            fetch('/api/notifications/' + id + '/mark_read/', { method: 'POST', headers: { 'X-CSRFToken': getCSRFTokenDash() } })
+                .then(r => r.json())
+                .then(() => { updateNotifBadgeDash(); if (dropdownDash.style.display === 'block') loadDropdownNotificationsDash(); });
+        }
+
+        document.getElementById('dropdownMarkAllReadDash')?.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fetch('/api/notifications/read-all/', { method: 'POST', headers: { 'X-CSRFToken': getCSRFTokenDash() } })
+                .then(r => r.json())
+                .then(() => { updateNotifBadgeDash(); if (dropdownDash.style.display === 'block') loadDropdownNotificationsDash(); });
+        });
+
+        function updateNotifBadgeDash() {
+            if (!badgeDash) return;
+            fetch('/api/notifications/unread-count/').then(r => r.json()).then(data => {
+                if (data.unread_count > 0) { badgeDash.textContent = data.unread_count; badgeDash.style.display = 'flex'; }
+                else { badgeDash.style.display = 'none'; }
+            });
+        }
+
+        function getCSRFTokenDash() { return document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''; }
+
+        if (badgeDash) { updateNotifBadgeDash(); setInterval(updateNotifBadgeDash, 30000); }
+    </script>
+</body>
+</html>

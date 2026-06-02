@@ -1,0 +1,153 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | RSSB CMS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: '#2563eb', page: '#f5f7fb' },
+                    boxShadow: { soft: '0 10px 30px rgba(15, 23, 42, 0.08)', card: '0 14px 34px rgba(15, 23, 42, 0.08)' },
+                    borderRadius: { '2xl': '1rem' },
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'] },
+                    animation: { floatIn: 'floatIn .45s ease forwards' },
+                    keyframes: { floatIn: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } } }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        html, body { background: #f5f7fb; scroll-behavior: smooth; }
+        .glass { background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <div class="min-h-screen flex bg-page">
+        <div id="sidebarBackdrop" class="fixed inset-0 bg-slate-900/35 z-30 hidden lg:hidden"></div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-40 h-screen w-[280px] shrink-0 -translate-x-full lg:translate-x-0 transition-transform duration-300 bg-white/95 border-r border-slate-200 shadow-soft flex flex-col">
+            <div class="px-6 py-6 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <img src="{% static 'images/logo_RSSB.png' %}" alt="RSSB" class="h-10 w-10 rounded-xl object-contain bg-slate-100 p-1">
+                    <div>
+                        <h1 class="text-lg font-extrabold tracking-tight text-slate-900">RSSB CMS</h1>
+                        <p class="text-xs text-slate-500"> Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="px-4 py-5 flex-1 overflow-y-auto">
+                <ul class="space-y-2 text-[15px]">
+                    {% if request.user.role == 'admin' %}
+                        <li><a href="{% url 'admin-dashboard' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-blue-50 hover:text-brand transition-all"><i class="fa-solid fa-table-columns text-sm"></i><span class="font-medium">Dashboard</span></a></li>
+                        <li><a href="{% url 'admin-all-complaints' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-blue-50 hover:text-brand transition-all"><i class="fa-solid fa-list-check text-sm"></i><span class="font-medium">All Complaints</span></a></li>
+                        <li><a href="{% url 'complaint-register' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-blue-50 hover:text-brand transition-all"><i class="fa-solid fa-file-circle-plus text-sm"></i><span class="font-medium">Register Complaint</span></a></li>
+                        <li><a href="{% url 'admin-user-management' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-blue-50 hover:text-brand transition-all"><i class="fa-solid fa-users text-sm"></i><span class="font-medium">User Management</span></a></li>
+                    {% endif %}
+                    <li><a href="{% url 'complaint-register' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-blue-50 hover:text-brand transition-all"><i class="fa-solid fa-file-circle-plus text-sm"></i><span class="font-medium">Register Complaint</span></a></li>
+                </ul>
+            </nav>
+
+            <div class="p-4 border-t border-slate-100">
+                <div class="rounded-2xl glass border border-slate-200 p-4 shadow-sm text-sm">
+                    <a href="{% url 'user-profile' %}" class="flex items-center gap-3 mb-3 hover:opacity-80 transition-opacity">
+                        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-brand to-blue-400 text-white font-bold flex items-center justify-center shrink-0">{{ user.get_full_name|default:user.username|first|upper }}</div>
+                        <div class="min-w-0">
+                            <p class="font-semibold text-slate-900 truncate">{{ user.get_full_name|default:user.username }}</p>
+                            <p class="text-[11px] text-slate-500 uppercase font-bold">{{ user.role }}</p>
+                        </div>
+                    </a>
+                    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 text-red-600 px-3 py-2 font-semibold hover:bg-red-100 transition-all"><i class="fa-solid fa-right-from-bracket text-xs"></i> Logout</button></form>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 min-w-0 flex flex-col">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+                <div class="max-w-[1000px] mx-auto px-4 md:px-6 py-4 flex items-center gap-4">
+                    <button id="openSidebarBtn" class="lg:hidden h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-bars"></i></button>
+                    <div class="min-w-0">
+                        <p class="text-sm text-slate-500">Security & Preferences</p>
+                        <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">My Profile</h2>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-[1000px] mx-auto px-4 md:px-6 py-8">
+                {% if messages %}<div class="space-y-3 mb-6">{% for message in messages %}<div class="rounded-xl border px-4 py-3 text-sm font-semibold {% if message.tags == 'success' %}bg-emerald-50 text-emerald-700 border-emerald-200{% else %}bg-red-50 text-red-700 border-red-200{% endif %}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+                <div class="grid grid-cols-1 gap-6">
+                    <section class="bg-white rounded-3xl border border-slate-200 shadow-soft overflow-hidden animate-floatIn">
+                        <div class="h-32 bg-gradient-to-r from-brand to-blue-400"></div>
+                        <div class="px-8 pb-8">
+                            <div class="relative -mt-12 flex items-end gap-6 mb-8">
+                                <div class="h-24 w-24 rounded-3xl border-4 border-white bg-slate-100 shadow-sm text-brand text-3xl font-extrabold flex items-center justify-center overflow-hidden">
+                                    {{ user.get_full_name|default:user.username|first|upper }}
+                                </div>
+                                <div class="pb-2">
+                                    <h3 class="text-2xl font-bold text-slate-900">{{ user.get_full_name|default:user.username }}</h3>
+                                    <p class="text-slate-500 font-medium flex items-center gap-2">
+                                        <span class="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
+                                        {{ user.role|capfirst }} • {{ user.department.name|default:"General Operations" }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <form method="post" class="space-y-6">
+                                {% csrf_token %}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Username</label>
+                                        <input type="text" value="{{ user.username }}" disabled class="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-slate-500 font-medium cursor-not-allowed">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email Address</label>
+                                        <input type="email" name="email" value="{{ user.email }}" class="w-full h-12 rounded-2xl border border-slate-200 px-4 focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">First Name</label>
+                                        <input type="text" name="first_name" value="{{ user.first_name }}" class="w-full h-12 rounded-2xl border border-slate-200 px-4 focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Last Name</label>
+                                        <input type="text" name="last_name" value="{{ user.last_name }}" class="w-full h-12 rounded-2xl border border-slate-200 px-4 focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all">
+                                    </div>
+                                </div>
+
+                                <div class="pt-4 flex items-center justify-between border-t border-slate-100">
+                                    <div class="hidden sm:block">
+                                        <p class="text-xs text-slate-400">Account status: Active</p>
+                                    </div>
+                                    <button type="submit" name="update_profile" class="h-12 px-8 rounded-2xl bg-brand text-white font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <section class="bg-white rounded-3xl border border-slate-200 shadow-soft p-8 animate-floatIn" style="animation-delay: 0.1s">
+                        <h4 class="text-lg font-bold text-slate-900 mb-2">Change Password</h4>
+                        <p class="text-sm text-slate-500 mb-6">Regularly update your password to keep your account secure.</p>
+                        <a href="{% url 'password_change' %}" class="inline-flex items-center gap-2 h-11 px-6 rounded-2xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-all"><i class="fa-solid fa-key text-xs"></i> Update Password</a>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        const openBtn = document.getElementById('openSidebarBtn');
+        const toggle = () => { sidebar.classList.toggle('-translate-x-full'); backdrop.classList.toggle('hidden'); }
+        if (openBtn) openBtn.addEventListener('click', toggle);
+        if (backdrop) backdrop.addEventListener('click', toggle);
+    </script>
+</body>
+</html>

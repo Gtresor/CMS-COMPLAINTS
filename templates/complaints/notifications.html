@@ -1,0 +1,310 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications | RSSB CMS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: '#2563eb', page: '#f5f7fb' },
+                    boxShadow: { soft: '0 10px 30px rgba(15, 23, 42, 0.08)', card: '0 14px 34px rgba(15, 23, 42, 0.08)' },
+                    borderRadius: { '2xl': '1rem' },
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'] },
+                    animation: { floatIn: 'floatIn .45s ease forwards' },
+                    keyframes: { floatIn: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } } }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        html, body { background: #f5f7fb; scroll-behavior: smooth; }
+        .glass { background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(10px); }
+        .notif-item {
+            transition: background-color 0.15s ease, opacity 0.2s ease;
+        }
+        .notif-item.unread {
+            border-left: 4px solid #2563eb;
+            background: rgba(37, 99, 235, 0.03);
+        }
+        .notif-item.unread:hover {
+            background: rgba(37, 99, 235, 0.06);
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <div class="min-h-screen flex bg-page">
+        {% with active_page='notifications' %}
+            {% include 'includes/sidebar.html' %}
+        {% endwith %}
+
+        <!-- Main Content Area -->
+        <div class="flex-1 min-w-0 flex flex-col">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+                <div class="max-w-[1700px] mx-auto px-4 md:px-6 py-4 flex items-center gap-4">
+                    <button id="openSidebarBtn" class="lg:hidden h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-bars"></i></button>
+                    <div class="min-w-0">
+                        <p class="text-sm text-slate-500">Stay updated</p>
+                        <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">Notifications</h2>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 space-y-6">
+
+                <!-- Filter Bar -->
+                <section class="bg-white rounded-2xl border border-slate-200 shadow-soft p-4 animate-floatIn" style="animation-delay: 0.05s">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span id="unreadBadge" class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-blue-100 text-blue-700">
+                            <i class="fa-solid fa-bell mr-2"></i> Loading...
+                        </span>
+
+                        <select id="typeFilter" class="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 min-w-[150px]">
+                            <option value="">All Types</option>
+                            {% for type_key, type_label in notification_types %}
+                                <option value="{{ type_key }}">{{ type_label }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <select id="readFilter" class="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 min-w-[120px]">
+                            <option value="">All Status</option>
+                            <option value="unread">Unread</option>
+                            <option value="read">Read</option>
+                        </select>
+
+                        <button id="markAllReadBtn" class="h-10 rounded-xl bg-brand text-white px-4 font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200/70 text-sm flex items-center gap-2 ml-auto">
+                            <i class="fa-solid fa-check-double"></i> Mark All Read
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Notifications List -->
+                <section class="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden animate-floatIn" style="animation-delay: 0.1s">
+                    <div class="px-6 py-4 border-b border-slate-100">
+                        <h3 class="text-lg font-bold text-slate-900">All Notifications</h3>
+                        <p class="text-sm text-slate-500">Review your recent system activities</p>
+                    </div>
+
+                    <div id="notificationsList">
+                        <div class="flex flex-col items-center justify-center py-16 text-slate-400">
+                            <i class="fa-solid fa-spinner fa-spin text-3xl mb-4"></i>
+                            <p class="font-semibold text-slate-500">Loading notifications...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Pagination -->
+                <div id="pagination" class="flex items-center justify-center gap-4 animate-floatIn" style="display: none;">
+                    <button id="prevPage" class="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2" disabled>
+                        <i class="fa-solid fa-chevron-left"></i> Previous
+                    </button>
+                    <span id="pageInfo" class="text-sm font-bold text-slate-700">Page 1</span>
+                    <button id="nextPage" class="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                        Next <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // ===== Sidebar =====
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        const openBtn = document.getElementById('openSidebarBtn');
+        function toggleSidebar() { sidebar.classList.toggle('-translate-x-full'); backdrop.classList.toggle('hidden'); }
+        if (openBtn) openBtn.addEventListener('click', toggleSidebar);
+        if (backdrop) backdrop.addEventListener('click', toggleSidebar);
+
+        // ===== Notification logic =====
+        let currentPage = 1;
+        let currentType = '';
+        let currentRead = '';
+        const perPage = 20;
+
+        function getNotificationsUrl() {
+            let url = '/api/notifications/?page=' + currentPage + '&page_size=' + perPage;
+            if (currentType) url += '&notification_type=' + currentType;
+            if (currentRead === 'unread') url += '&is_read=false';
+            else if (currentRead === 'read') url += '&is_read=true';
+            return url;
+        }
+
+        function updateUnreadCount() {
+            fetch('/api/notifications/unread-count/')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.getElementById('unreadBadge');
+                    badge.innerHTML = '<i class="fa-solid fa-bell mr-2"></i> ' + data.unread_count + ' unread';
+                });
+        }
+
+        function renderNotifications(data) {
+            const container = document.getElementById('notificationsList');
+            const pagination = document.getElementById('pagination');
+
+            if (!data.results || data.results.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-20 text-slate-400">
+                        <i class="fa-regular fa-bell-slash text-5xl mb-4"></i>
+                        <p class="text-lg font-semibold text-slate-500">No notifications found</p>
+                        <p class="text-sm text-slate-400">You're all caught up!</p>
+                    </div>
+                `;
+                pagination.style.display = 'none';
+                return;
+            }
+
+            let html = '<div class="divide-y divide-slate-100">';
+            data.results.forEach(n => {
+                const cssClass = n.is_read ? '' : 'unread';
+                const severityClass = n.severity || 'info';
+                let iconBg, iconColor, iconName;
+                if (severityClass === 'warning') { iconBg = 'bg-amber-50'; iconColor = 'text-amber-600'; iconName = n.severity_icon || 'fa-triangle-exclamation'; }
+                else if (severityClass === 'critical') { iconBg = 'bg-red-50'; iconColor = 'text-red-600'; iconName = n.severity_icon || 'fa-circle-exclamation'; }
+                else { iconBg = 'bg-blue-50'; iconColor = 'text-brand'; iconName = n.severity_icon || 'fa-circle-info'; }
+
+                html += `
+                    <div class="notif-item p-4 md:px-6 md:py-5 flex items-start gap-4 hover:bg-slate-50/70 transition-all ${cssClass}" data-id="${n.id}">
+                        <div class="h-10 w-10 rounded-xl ${iconBg} ${iconColor} flex items-center justify-center shrink-0">
+                            <i class="fa-solid ${iconName}"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-slate-900">${n.message}</p>
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
+                                <span><i class="fa-regular fa-clock mr-1"></i>${n.time_ago}</span>
+                                ${n.performed_by_name ? `<span><span class="font-medium text-slate-600">by</span> ${n.performed_by_name}</span>` : ''}
+                                ${n.complaint_case_number ? `<span><i class="fa-regular fa-file-lines mr-1"></i>${n.complaint_case_number}</span>` : ''}
+                            </div>
+                        </div>
+                        ${!n.is_read ? `
+                            <button onclick="markAsRead(${n.id})" class="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:bg-brand hover:text-white hover:border-brand transition-all shrink-0 flex items-center justify-center" title="Mark as read">
+                                <i class="fa-solid fa-check text-xs"></i>
+                            </button>
+                        ` : `
+                            <span class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold bg-slate-100 text-slate-400 shrink-0">
+                                <i class="fa-solid fa-check mr-1"></i> Read
+                            </span>
+                        `}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+
+            // Pagination
+            if (data.count > perPage) {
+                pagination.style.display = 'flex';
+                document.getElementById('pageInfo').textContent = 'Page ' + currentPage + ' of ' + Math.ceil(data.count / perPage);
+                document.getElementById('prevPage').disabled = !data.previous;
+                document.getElementById('nextPage').disabled = !data.next;
+            } else {
+                pagination.style.display = 'none';
+            }
+        }
+
+        function loadNotifications() {
+            const container = document.getElementById('notificationsList');
+            fetch(getNotificationsUrl(), { headers: { 'Accept': 'application/json' } })
+                .then(r => r.json())
+                .then(data => renderNotifications(data))
+                .catch(() => {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-16 text-slate-400">
+                            <i class="fa-solid fa-exclamation-triangle text-3xl mb-4 text-red-400"></i>
+                            <p class="font-semibold text-red-500">Failed to load notifications.</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function markAsRead(id) {
+            fetch('/api/notifications/' + id + '/mark_read/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            })
+                .then(r => r.json())
+                .then(() => {
+                    loadNotifications();
+                    updateUnreadCount();
+                    updateHeaderBadge();
+                });
+        }
+
+        document.getElementById('markAllReadBtn').addEventListener('click', function() {
+            fetch('/api/notifications/read-all/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            })
+                .then(r => r.json())
+                .then(() => {
+                    loadNotifications();
+                    updateUnreadCount();
+                    updateHeaderBadge();
+                });
+        });
+
+        document.getElementById('typeFilter').addEventListener('change', function() {
+            currentType = this.value;
+            currentPage = 1;
+            loadNotifications();
+        });
+
+        document.getElementById('readFilter').addEventListener('change', function() {
+            currentRead = this.value;
+            currentPage = 1;
+            loadNotifications();
+        });
+
+        document.getElementById('prevPage').addEventListener('click', function() {
+            if (currentPage > 1) { currentPage--; loadNotifications(); }
+        });
+
+        document.getElementById('nextPage').addEventListener('click', function() {
+            currentPage++; loadNotifications();
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function updateHeaderBadge() {
+            const bell = document.querySelector('.notify');
+            if (!bell) return;
+            fetch('/api/notifications/unread-count/')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.unread_count > 0) {
+                        bell.style.setProperty('--badge-count', '"' + data.unread_count + '"');
+                        bell.classList.add('has-unread');
+                    } else {
+                        bell.classList.remove('has-unread');
+                    }
+                });
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNotifications();
+            updateUnreadCount();
+        });
+    </script>
+</body>
+</html>

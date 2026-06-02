@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSSB CMS Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-jQNNgzN6EfYdR5cYcQOXN42XzT3QF8dse5k1iUjTH8twC16U6udusb/aXj0DwDlFGteJjzY5Y0s7hY7j+oOkLQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        :root {
+            font-family: 'DM Sans', sans-serif;
+            color: #F8FAFC;
+            background: #0F1F3D;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            overflow: hidden;
+            background: #0F1F3D;
+        }
+
+        .login-shell {
+            display: grid;
+            grid-template-columns: 40% 60%;
+            min-height: 100vh;
+        }
+
+        .panel-left {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px 60px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0F1F3D 0%, #15294F 40%, #1F3A6A 100%);
+        }
+
+        .panel-left::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.28), transparent 24%),
+                        radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.18), transparent 28%);
+            pointer-events: none;
+            animation: drift 12s ease infinite;
+        }
+
+        @keyframes drift {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(18px, -22px) scale(1.03); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+
+        .brand-mark {
+            font-family: 'Syne', sans-serif;
+            color: #FFFFFF;
+            font-size: 3rem;
+            letter-spacing: -0.05em;
+            margin: 0 0 18px;
+        }
+
+        .login-logo {
+            display: block;
+            max-width: 220px;
+            height: auto;
+            margin-bottom: 18px;
+        }
+
+        .tagline {
+            font-size: 1.05rem;
+            color: rgba(241, 245, 249, 0.85);
+            max-width: 340px;
+            line-height: 1.7;
+            margin-bottom: 40px;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 18px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .feature-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            display: grid;
+            place-items: center;
+            color: #7DD3FC;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .feature-text {
+            color: #E2E8F0;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+        .panel-right {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #F8FAFC;
+            padding: 60px 40px;
+        }
+
+        .login-card {
+            width: min(100%, 460px);
+            background: #FFFFFF;
+            border-radius: 28px;
+            padding: 40px 42px;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+            color: #0F172A;
+        }
+
+        .login-card h1 {
+            margin: 0;
+            font-family: 'Syne', sans-serif;
+            font-size: 2.4rem;
+            letter-spacing: -0.04em;
+            color: #0F1F3D;
+        }
+
+        .login-card p {
+            margin: 14px 0 28px;
+            color: #64748B;
+            line-height: 1.7;
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: #0F1F3D;
+        }
+
+        .form-field {
+            width: 100%;
+            padding: 14px 16px 14px 48px;
+            border: 1px solid #CBD5E1;
+            border-radius: 16px;
+            font-size: 1rem;
+            color: #0F1F3D;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-field:focus {
+            border-color: #1D4ED8;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+        }
+
+        .field-icon {
+            position: absolute;
+            top: 50%;
+            left: 16px;
+            transform: translateY(-50%);
+            color: #64748B;
+            font-size: 1rem;
+        }
+
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 16px;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            color: #64748B;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 16px;
+            background: #1A56DB;
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            background: #1644B7;
+        }
+
+        .messages {
+            margin-bottom: 20px;
+        }
+
+        .message {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: #FEE2E2;
+            color: #B91C1C;
+            border: 1px solid rgba(220, 38, 38, 0.18);
+            font-weight: 600;
+        }
+
+        .small-note {
+            margin-top: 24px;
+            font-size: 0.95rem;
+            color: #64748B;
+        }
+
+        @media (max-width: 1024px) {
+            .login-shell {
+                grid-template-columns: 1fr;
+            }
+            .panel-left, .panel-right {
+                min-height: 50vh;
+                padding: 40px 30px;
+            }
+            .panel-left {
+                order: 2;
+            }
+            .panel-right {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .panel-left, .panel-right {
+                padding: 30px 24px;
+            }
+            .login-card {
+                padding: 32px 28px;
+            }
+            .panel-left {
+                min-height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-shell">
+        <section class="panel-left">
+            <div>
+                <img src="{% static 'images/logo_RSSB.png' %}" alt="RSSB" class="login-logo">
+                <h1 class="brand-mark">RSSP</h1>
+                <p class="tagline">Complaint Management System</p>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <span class="feature-icon"><i class="fa-solid fa-user-plus"></i></span>
+                        <span class="feature-text">Register complaints easily</span>
+                    </li>
+                    <li class="feature-item">
+                        <span class="feature-icon"><i class="fa-solid fa-clock"></i></span>
+                        <span class="feature-text">Track progress in real time</span>
+                    </li>
+                    <li class="feature-item">
+                        <span class="feature-icon"><i class="fa-solid fa-circle-check"></i></span>
+                        <span class="feature-text">Resolve issues faster</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <section class="panel-right">
+            <div class="login-card">
+                <h1>Welcome</h1>
+                <p>Sign in to your portal</p>
+
+                {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                            <div class="message">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if form.non_field_errors %}
+                    <div class="messages">
+                        <div class="message">
+                            <i class="fa-solid fa-circle-exclamation" style="margin-right: 8px;"></i>
+                            Invalid username or password. Please try again.
+                        </div>
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'login' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="id_username">Username</label>
+                        <span class="field-icon"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" name="username" id="id_username" class="form-field" placeholder="Enter username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_password">Password</label>
+                        <span class="field-icon"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" name="password" id="id_password" class="form-field" placeholder="Enter password" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword()">Show</button>
+                    </div>
+                    <button type="submit" class="btn-primary">Login</button>
+                </form>
+                <p class="small-note">Need help? Contact your administrator for login assistance.</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const field = document.getElementById('id_password');
+            const button = document.querySelector('.toggle-password');
+            if (field.type === 'password') {
+                field.type = 'text';
+                button.textContent = 'Hide';
+            } else {
+                field.type = 'password';
+                button.textContent = 'Show';
+            }
+        }
+    </script>
+</body>
+</html>

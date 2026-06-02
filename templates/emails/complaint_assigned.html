@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body{margin:0;padding:0;background:#f5f7fb;font-family:'Segoe UI',Arial,sans-serif}
+.container{max-width:600px;margin:0 auto;padding:32px 20px}
+.header{background:linear-gradient(135deg,#1A56DB,#2563eb);border-radius:16px 16px 0 0;padding:32px;text-align:center}
+.header h1{color:#fff;margin:0;font-size:24px;font-weight:700}
+.header p{color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px}
+.body-card{background:#fff;border-radius:0 0 16px 16px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px}
+.label{color:#6b7280;font-weight:600}
+.value{color:#111827;font-weight:700;text-align:right}
+.desc-box{background:#f9fafb;border-radius:12px;padding:16px;margin-top:16px;font-size:14px;color:#374151;line-height:1.6}
+.btn{display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 32px;border-radius:12px;font-weight:700;font-size:15px;margin-top:24px}
+.footer{text-align:center;padding:24px;color:#9ca3af;font-size:12px}
+.highlight{background:#f0f4ff;border-radius:12px;padding:16px;margin-bottom:20px}
+.case{font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:700;margin:0 0 4px}
+.title{margin:0;font-size:20px;font-weight:800;color:#111827}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>New Complaint Assignment</h1>
+<p>A complaint has been assigned to you on the RSSB CMS</p>
+</div>
+<div class="body-card">
+<p style="font-size:16px;color:#374151;margin:0 0 20px">Hello <strong>{{ handler.get_full_name|default:handler.username }}</strong>,</p>
+<p style="font-size:14px;color:#6b7280;margin:0 0 20px">A new complaint has been assigned to you. Please review and take action.</p>
+<div class="highlight">
+<p class="case">{{ complaint.case_number }}</p>
+<p class="title">{{ complaint.complaint_title }}</p>
+</div>
+<div class="row"><span class="label">System Code</span><span class="value">{{ complaint.system_code }}</span></div>
+<div class="row"><span class="label">Priority</span><span class="value">{{ complaint.priority|default:'Low'|title }}</span></div>
+<div class="row"><span class="label">Source</span><span class="value">{{ complaint.get_complaint_source_display|default:complaint.source|title }}</span></div>
+<div class="row"><span class="label">Complainant</span><span class="value">{{ complaint.full_name }}</span></div>
+<div class="row"><span class="label">Phone</span><span class="value">{{ complaint.phone_number }}</span></div>
+<div class="row"><span class="label">Complaint Date</span><span class="value">{{ complaint.complaint_date|date:'F d, Y' }}</span></div>
+<div class="row"><span class="label">Response Due</span><span class="value">{{ complaint.response_due_days }} days</span></div>
+<div class="row" style="border-bottom:none"><span class="label">Status</span><span class="value">{{ complaint.get_status_display }}</span></div>
+{% if complaint.description %}
+<div class="desc-box"><strong style="display:block;margin-bottom:8px;color:#111827">Description</strong>{{ complaint.description }}</div>
+{% endif %}
+{% if handle_url %}
+<div style="text-align:center"><a href="{{ handle_url }}" class="btn">View & Handle Complaint</a></div>
+{% endif %}
+</div>
+<div class="footer">
+<p style="margin:0">{{ sender_name }}</p>
+<p style="margin:4px 0 0">RSSB Complaints Management System</p>
+<p style="margin:4px 0 0">This is an automated notification.</p>
+</div>
+</div>
+</body>
+</html>
