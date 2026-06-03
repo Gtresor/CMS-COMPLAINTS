@@ -330,13 +330,20 @@ def _send_assignment_email(complaint, handler):
     Returns tuple (success: bool, message: str)
     """
     config = SystemConfiguration.get_settings()
-    
-    # Check if SMTP is configured
-    if not config.is_fully_configured:
-        return False, "Email service not configured"
-    
+
     sender_email = config.sender_email or settings.DEFAULT_FROM_EMAIL
     sender_name = config.sender_name or 'RSSB Complaints System'
+    use_custom_smtp = bool(config.smtp_host and config.smtp_username and config.smtp_password)
+    use_default_backend = bool(
+        getattr(settings, 'EMAIL_BACKEND', None)
+        and (
+            settings.EMAIL_BACKEND != 'django.core.mail.backends.smtp.EmailBackend'
+            or getattr(settings, 'EMAIL_HOST', None)
+        )
+    )
+
+    if not use_custom_smtp and not use_default_backend:
+        return False, 'Email service not configured'
 
     subject = f'New Complaint Assigned: {complaint.case_number}'
 
@@ -354,11 +361,10 @@ def _send_assignment_email(complaint, handler):
         plain_message = strip_tags(html_message)
 
         handler_display = handler.get_full_name() or handler.username
-        
-        # Use system SMTP settings if configured
-        if config.smtp_host and config.smtp_username:
+
+        if use_custom_smtp:
             from django.core.mail import EmailMultiAlternatives, get_connection
-            
+
             msg = EmailMultiAlternatives(
                 subject=subject,
                 body=plain_message,
@@ -366,8 +372,7 @@ def _send_assignment_email(complaint, handler):
                 to=[handler.email],
             )
             msg.attach_alternative(html_message, 'text/html')
-            
-            # Create custom connection with SMTP settings
+
             connection = get_connection(
                 backend='django.core.mail.backends.smtp.EmailBackend',
                 host=config.smtp_host,
@@ -377,9 +382,14 @@ def _send_assignment_email(complaint, handler):
                 use_tls=config.use_tls,
             )
             msg.connection = connection
-            msg.send()
-            return True, f"Email sent successfully to {handler_display} ({handler.email})"
-        else:
+            try:
+                msg.send()
+                return True, f"Email sent successfully to {handler_display} ({handler.email})"
+            except Exception:
+                if not use_default_backend:
+                    raise
+
+        if use_default_backend:
             from django.core.mail import send_mail
             send_mail(
                 subject=subject,
@@ -390,7 +400,9 @@ def _send_assignment_email(complaint, handler):
                 fail_silently=False,
             )
             return True, f"Email sent successfully to {handler_display} ({handler.email})"
-            
+
+        return False, 'Email service not configured'
+
     except Exception as e:
         error_msg = f"Failed to send email to handler: {str(e)[:100]}"
         return False, error_msg

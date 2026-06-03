@@ -122,6 +122,8 @@ class ComplaintSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    assigned_to_name = serializers.SerializerMethodField()
+    notes = ComplaintNoteSerializer(many=True, read_only=True)
     full_name = serializers.CharField(max_length=150)
     phone_number = serializers.CharField(max_length=30)
     complaint_source = serializers.ChoiceField(choices=Complaint.SOURCE_CHOICES)
@@ -140,7 +142,8 @@ class ComplaintSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'case_number', 'full_name', 'phone_number', 'complaint_source',
             'email', 'national_id', 'bank_institution', 'complaint_title',
-            'complaint_date', 'description', 'assigned_to', 'response_due_days',
+            'complaint_date', 'description', 'assigned_to', 'assigned_to_id',
+            'assigned_to_name', 'response_due_days', 'notes',
             'system_code', 'registered_at', 'status', 'registered_by',
             'assigned_by', 'category', 'priority', 'sla_mode', 'sla_days',
             'source', 'complainant_name', 'complainant_phone', 'complainant_email',
@@ -164,6 +167,11 @@ class ComplaintSerializer(serializers.ModelSerializer):
         if value and value.role != 'handler':
             raise serializers.ValidationError("Assigned user must have the role 'handler'.")
         return value
+
+    def get_assigned_to_name(self, obj):
+        if obj.assigned_to:
+            return obj.assigned_to.get_full_name() or obj.assigned_to.username
+        return None
 
 
 class NotificationSerializer(serializers.ModelSerializer):

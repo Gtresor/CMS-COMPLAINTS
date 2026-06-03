@@ -702,10 +702,45 @@ class AdminAllComplaintsView(LoginRequiredMixin, TemplateView):
             ('resolved', 'Resolved'),
             ('closed', 'Closed'),
         ]
+        categories = Category.objects.order_by('name')
         context['priority_choices'] = Complaint.PRIORITY_CHOICES
         context['source_choices'] = Complaint.SOURCE_CHOICES
         context['handlers'] = handlers
+        context['categories'] = categories
         context['complaints'] = complaints
+        return context
+
+
+class EditComplaintView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/edit_complaint.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if request.user.role not in {'admin', 'reviewer', 'registrar'}:
+            raise DjangoPermissionDenied('You do not have permission to edit complaints.')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        pk = self.kwargs.get('pk')
+        complaint = get_object_or_404(Complaint.objects.select_related('category', 'assigned_to'), pk=pk)
+        handlers = User.objects.filter(role='handler', is_active=True).order_by('username')
+        context['status_columns'] = [
+            ('new', 'New'),
+            ('under_review', 'Under Review'),
+            ('assigned', 'Assigned'),
+            ('in_progress', 'In Progress'),
+            ('pending_info', 'Pending Info'),
+            ('resolved', 'Resolved'),
+            ('closed', 'Closed'),
+        ]
+        categories = Category.objects.order_by('name')
+        context['priority_choices'] = Complaint.PRIORITY_CHOICES
+        context['source_choices'] = Complaint.SOURCE_CHOICES
+        context['handlers'] = handlers
+        context['categories'] = categories
+        context['complaint'] = complaint
         return context
 
 
@@ -1037,20 +1072,26 @@ class AdminSettingsView(LoginRequiredMixin, View):
             config.use_tls = request.POST.get('use_tls') == 'on'
             config.save()
 
-            # Run a live SMTP test against the freshly-saved configuration so
-            # the UI border reflects the real status (green / red) immediately.
-            from .services import record_smtp_test_result
-            test_ok, test_message = record_smtp_test_result(config)
+            if config.smtp_host:
+                # Run a live SMTP test against the freshly-saved configuration so
+                # the UI border reflects the real status (green / red) immediately.
+                from .services import record_smtp_test_result
+                test_ok, test_message = record_smtp_test_result(config)
 
-            if test_ok:
+                if test_ok:
+                    messages.success(
+                        request,
+                        f'Email configuration saved and verified. {test_message}',
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        f'Email configuration saved, but the live SMTP test failed: {test_message}',
+                    )
+            else:
                 messages.success(
                     request,
-                    f'Email configuration saved and verified. {test_message}',
-                )
-            else:
-                messages.warning(
-                    request,
-                    f'Email configuration saved, but the live SMTP test failed: {test_message}',
+                    'Email configuration saved. No direct SMTP host configured; the app will use the Django email backend from environment settings.',
                 )
             return redirect('admin-settings')
 

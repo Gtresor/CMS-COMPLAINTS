@@ -31,6 +31,9 @@
         .glass { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(12px); }
         .timeline-line::before { content: ''; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: #e5e7eb; }
         .active-row { border-color: #2563eb !important; background: #eff6ff !important; }
+        #notificationBar { transition: opacity 0.3s ease, transform 0.3s ease; }
+        #notificationBar.hidden { opacity: 0; transform: translateY(-8px); }
+        #notificationBar:not(.hidden) { opacity: 1; transform: translateY(0); }
     </style>
 </head>
 <body class="font-sans text-slate-800">
@@ -67,6 +70,8 @@
             </header>
 
             <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 space-y-6 flex-1 w-full">
+                <div id="notificationBar" class="hidden rounded-2xl border px-4 py-3 text-sm font-semibold"></div>
+
                 <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm animate-floatIn">
                         <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Complaints</p>
@@ -225,83 +230,6 @@
         </div>
     </div>
 
-    <div id="editModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 px-4 py-6">
-        <div class="w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
-                <div>
-                    <h3 class="text-lg font-bold text-slate-900">Edit Complaint</h3>
-                    <p class="text-sm text-slate-500">Update complaint fields and save changes.</p>
-                </div>
-                <button id="closeEditModal" type="button" class="text-slate-500 hover:text-slate-900"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="p-6 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Case Number</label>
-                        <input id="editCaseNumber" type="text" class="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700" readonly>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Status</label>
-                        <select id="editStatus" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none">
-                            {% for key, label in status_columns %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Complainant Name</label>
-                        <input id="editFullName" type="text" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Phone Number</label>
-                        <input id="editPhoneNumber" type="text" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none">
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Email</label>
-                        <input id="editEmail" type="email" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Source</label>
-                        <select id="editSource" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none">
-                            {% for value, label in source_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Assigned Handler</label>
-                        <select id="editAssignedTo" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none">
-                            <option value="">Unassigned</option>
-                            {% for h in handlers %}
-                                <option value="{{ h.id }}">{{ h.get_full_name|default:h.username }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Priority</label>
-                        <select id="editPriority" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none">
-                            {% for value, label in priority_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">Response Due Days</label>
-                    <input id="editResponseDueDays" type="number" min="1" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">Description</label>
-                    <textarea id="editDescription" rows="5" class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none"></textarea>
-                </div>
-                <div class="flex flex-wrap gap-3 justify-end pt-2">
-                    <button id="cancelEditBtn" type="button" class="h-11 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all">Cancel</button>
-                    <button id="saveEditBtn" type="button" class="h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700 transition-all">Save Changes</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
         const sidebar = document.getElementById('sidebar');
         const sidebarBackdrop = document.getElementById('sidebarBackdrop');
@@ -369,6 +297,16 @@
             applyFilters();
         });
 
+        // Notification bar
+        function showNotification(type, text) {
+            const bar = document.getElementById('notificationBar');
+            if (!bar) return;
+            bar.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-700', 'border-emerald-200', 'bg-red-50', 'text-red-700', 'border-red-200');
+            bar.textContent = text;
+            bar.classList.add(type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200');
+            setTimeout(() => { bar.classList.add('hidden'); }, 4000);
+        }
+
         // Detail Panel Logic
         let activeComplaintId = null;
         const emptyState = document.getElementById('emptyDetailState');
@@ -379,6 +317,7 @@
             const value = `; ${document.cookie}`;
             const parts = value.split(`; ${name}=`);
             if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
         }
 
         async function loadComplaint(id) {
@@ -441,7 +380,6 @@
 
         // Handle 3-dot menu toggle and dropdown items
         document.addEventListener('click', (e) => {
-            // Handle menu toggle
             const menuToggle = e.target.closest('.action-menu-toggle');
             if (menuToggle) {
                 e.stopPropagation();
@@ -453,7 +391,6 @@
                 return;
             }
 
-            // Handle dropdown item clicks
             const dropdownItem = e.target.closest('.dropdown-item[data-action]');
             if (dropdownItem) {
                 e.stopPropagation();
@@ -463,135 +400,81 @@
                 closeAllDropdowns();
                 if (!complaintId) return;
                 if (action === 'edit') {
-                    openEditModal(complaintId);
+                    window.location.href = `/dashboard/complaints/${complaintId}/edit/`;
                 } else if (action === 'delete') {
                     deleteComplaint(complaintId);
                 }
                 return;
             }
 
-            // Close dropdowns when clicking outside
             if (!e.target.closest('.action-dropdown')) {
                 closeAllDropdowns();
             }
         });
 
-        const editModal = document.getElementById('editModal');
-        const editCaseNumber = document.getElementById('editCaseNumber');
-        const editFullName = document.getElementById('editFullName');
-        const editPhoneNumber = document.getElementById('editPhoneNumber');
-        const editEmail = document.getElementById('editEmail');
-        const editSource = document.getElementById('editSource');
-        const editAssignedTo = document.getElementById('editAssignedTo');
-        const editPriority = document.getElementById('editPriority');
-        const editStatus = document.getElementById('editStatus');
-        const editResponseDueDays = document.getElementById('editResponseDueDays');
-        const editDescription = document.getElementById('editDescription');
-        const saveEditBtn = document.getElementById('saveEditBtn');
-        const closeEditModal = document.getElementById('closeEditModal');
-        const cancelEditBtn = document.getElementById('cancelEditBtn');
         const detailEditBtn = document.getElementById('detailEditBtn');
         const detailDeleteBtn = document.getElementById('detailDeleteBtn');
 
-        let editComplaintId = null;
-
-        async function openEditModal(id) {
-            editComplaintId = id;
-            const res = await fetch(`/api/complaints/${id}/`);
-            if (!res.ok) { alert('Unable to load complaint details for editing.'); return; }
-            const complaint = await res.json();
-
-            editCaseNumber.value = complaint.case_number || '';
-            editFullName.value = complaint.full_name || '';
-            editPhoneNumber.value = complaint.phone_number || '';
-            editEmail.value = complaint.email || '';
-            editSource.value = complaint.complaint_source || '';
-            editAssignedTo.value = complaint.assigned_to?.id || '';
-            editPriority.value = complaint.priority || 'medium';
-            editStatus.value = complaint.status || 'pending';
-            editResponseDueDays.value = complaint.response_due_days || '';
-            editDescription.value = complaint.description || '';
-
-            editModal.classList.remove('hidden');
-        }
-
-        function closeEditModalDialog() {
-            editModal.classList.add('hidden');
-            editComplaintId = null;
-        }
-
-        closeEditModal?.addEventListener('click', closeEditModalDialog);
-        cancelEditBtn?.addEventListener('click', closeEditModalDialog);
         detailEditBtn?.addEventListener('click', () => {
             if (!activeComplaintId) return;
-            openEditModal(activeComplaintId);
+            window.location.href = `/dashboard/complaints/${activeComplaintId}/edit/`;
         });
         detailDeleteBtn?.addEventListener('click', () => {
-            if (!activeComplaintId) return;
-            deleteComplaint(activeComplaintId);
-        });
-        editModal?.addEventListener('click', (e) => {
-            if (e.target === editModal) closeEditModalDialog();
-        });
-
-        async function refreshComplaintCard(updatedComplaint) {
-            const card = document.querySelector(`.complaint-card[data-id="${updatedComplaint.id}"]`);
-            if (!card) return;
-            card.dataset.status = updatedComplaint.status;
-            card.dataset.priority = updatedComplaint.priority;
-            card.dataset.source = updatedComplaint.source;
-            const assigneeText = updatedComplaint.assigned_to?.get_full_name || 'Unassigned';
-            const nameEl = card.querySelector('p.text-xs.text-slate-500.mt-1');
-            if (nameEl) {
-                nameEl.innerHTML = `<span><i class="fa-solid fa-layer-group mr-1 opacity-70"></i> ${updatedComplaint.category?.name || 'General'}</span>
-                                    <span><i class="fa-solid fa-user-circle mr-1 opacity-70"></i> ${assigneeText}</span>`;
-            }
-            const statusBadge = card.querySelector('.px-2.5.py-1.bg-slate-100');
-            if (statusBadge) statusBadge.textContent = updatedComplaint.status.replace(/_/g, ' ');
-            updateCounters();
-        }
-
-        saveEditBtn?.addEventListener('click', async () => {
-            if (!editComplaintId) return;
-            const csrftoken = getCookie('csrftoken');
-            const payload = {
-                full_name: editFullName.value.trim(),
-                phone_number: editPhoneNumber.value.trim(),
-                email: editEmail.value.trim(),
-                complaint_source: editSource.value,
-                assigned_to_id: editAssignedTo.value || null,
-                priority: editPriority.value,
-                status: editStatus.value,
-                response_due_days: Number(editResponseDueDays.value) || null,
-                description: editDescription.value.trim(),
-            };
-            const res = await fetch(`/api/complaints/${editComplaintId}/`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-                alert('Failed to save complaint updates.');
+            if (!activeComplaintId) {
+                showNotification('error', 'Please select a complaint first by clicking on it.');
                 return;
             }
-            const updated = await res.json();
-            refreshComplaintCard(updated);
-            if (activeComplaintId === editComplaintId) loadComplaint(editComplaintId);
-            closeEditModalDialog();
+            deleteComplaint(activeComplaintId);
         });
 
         async function deleteComplaint(id) {
-            if (!confirm('Delete this complaint permanently? This cannot be undone.')) return;
+            if (!id) {
+                showNotification('error', 'No complaint ID provided.');
+                return;
+            }
+
+            if (!confirm('Delete this complaint permanently? This cannot be undone.')) {
+                return;
+            }
+
             const csrftoken = getCookie('csrftoken');
-            const res = await fetch(`/api/complaints/${id}/`, {
-                method: 'DELETE',
-                headers: { 'X-CSRFToken': csrftoken },
-            });
-            if (!res.ok) { alert('Delete request failed.'); return; }
-            const card = document.querySelector(`.complaint-card[data-id="${id}"]`);
-            card?.remove();
-            updateCounters();
-            if (activeComplaintId === id) closeDetails();
+            if (!csrftoken) {
+                showNotification('error', 'Security token not found. Please refresh the page and try again.');
+                return;
+            }
+
+            // Use XMLHttpRequest with credentials for maximum browser compatibility
+            const xhr = new XMLHttpRequest();
+            xhr.open('DELETE', `/api/complaints/${id}/`, true);
+            xhr.withCredentials = true;
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('X-CSRFToken', csrftoken);
+
+            xhr.onload = function() {
+                if (xhr.status === 204 || xhr.status === 200) {
+                    const card = document.querySelector(`.complaint-card[data-id="${id}"]`);
+                    if (card) {
+                        card.remove();
+                        updateCounters();
+                    }
+                    if (activeComplaintId === id) closeDetails();
+                    showNotification('success', 'Complaint deleted successfully.');
+                } else if (xhr.status === 403) {
+                    let msg = 'Permission denied. Only admins can delete complaints.';
+                    try { msg = JSON.parse(xhr.responseText).detail || msg; } catch(e) {}
+                    showNotification('error', msg);
+                } else if (xhr.status === 401) {
+                    showNotification('error', 'Your session has expired. Please refresh the page and log in again.');
+                } else if (xhr.status === 404) {
+                    showNotification('error', 'Complaint not found. It may have already been deleted.');
+                } else {
+                    showNotification('error', `Delete failed (Error ${xhr.status}). ${xhr.responseText.substring(0, 100)}`);
+                }
+            };
+            xhr.onerror = function() {
+                showNotification('error', 'Network error. Please check your connection and try again.');
+            };
+            xhr.send();
         }
 
         function closeDetails() {
@@ -607,28 +490,25 @@
             const note = document.getElementById('updateNoteText').value.trim();
             const csrftoken = getCookie('csrftoken');
 
-            // Update Status
             const sRes = await fetch(`/api/complaints/${activeComplaintId}/`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
                 body: JSON.stringify({ status })
             });
 
-            if (!sRes.ok) { alert('Failed to update status'); return; }
+            if (!sRes.ok) { showNotification('error', 'Failed to update status'); return; }
 
-            // Add Note if exists
             if (note) {
                 const nRes = await fetch('/api/notes/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
                     body: JSON.stringify({ complaint: activeComplaintId, note })
                 });
-                if (!nRes.ok) alert('Status updated but note failed to save.');
+                if (!nRes.ok) showNotification('error', 'Status updated but note failed to save.');
             }
 
             document.getElementById('updateNoteText').value = '';
-            
-            // Refresh card in list
+
             const card = document.querySelector(`.complaint-card[data-id="${activeComplaintId}"]`);
             if (card) {
                 card.dataset.status = status;
@@ -638,6 +518,6 @@
 
             loadComplaint(activeComplaintId);
         });
-    </div>
+    </script>
 </body>
 </html>

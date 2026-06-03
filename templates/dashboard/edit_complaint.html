@@ -1,0 +1,302 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Complaint: {{ complaint.case_number }} | RSSB CMS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: '#2563eb', page: '#f5f7fb' },
+                    boxShadow: { soft: '0 10px 30px rgba(15, 23, 42, 0.08)', card: '0 14px 34px rgba(15, 23, 42, 0.08)' },
+                    borderRadius: { '2xl': '1rem' },
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+    <style>
+        html, body { background: #f5f7fb; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        .glass { background: rgba(255, 255, 255, 0.74); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <div class="min-h-screen flex bg-page">
+        {% with active_page='all-complaints' %}
+            {% include 'includes/sidebar.html' %}
+        {% endwith %}
+
+        <div class="flex-1 min-w-0 flex flex-col">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+                <div class="max-w-[1700px] mx-auto px-4 md:px-6 py-4 flex flex-wrap lg:flex-nowrap items-center gap-4 justify-between">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <button id="openSidebarBtn" class="lg:hidden h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50">
+                            <i class="fa-solid fa-bars"></i>
+                        </button>
+                        <div class="min-w-0">
+                            <nav class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                                <a href="{% url 'admin-dashboard' %}" class="hover:text-brand">Dashboard</a>
+                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                                <a href="{% url 'admin-all-complaints' %}" class="hover:text-brand">Complaints</a>
+                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                                <span class="text-slate-700 font-semibold">Edit: {{ complaint.case_number }}</span>
+                            </nav>
+                            <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">Edit Complaint</h2>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <a href="{% url 'admin-all-complaints' %}" class="h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50 inline-flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-arrow-left"></i> Back
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 space-y-6 flex-1 w-full">
+                <div id="editMessage" class="hidden rounded-2xl border px-4 py-3 text-sm font-semibold"></div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
+                    <div class="space-y-6">
+                        <!-- Complaint Information -->
+                        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                            <div class="px-5 md:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-white">
+                                <h3 class="text-lg font-bold text-slate-900">Complaint Information</h3>
+                                <p class="text-sm text-slate-500 mt-1">Edit complainant identity and contact details.</p>
+                            </div>
+                            <div class="p-5 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Case Number</label>
+                                    <input id="editCaseNumber" type="text" class="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500" value="{{ complaint.case_number }}" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">System Code</label>
+                                    <input id="editSystemCode" type="text" class="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500" value="{{ complaint.system_code }}" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Status</label>
+                                    <select id="editStatus" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                                        {% for key, label in status_columns %}
+                                            <option value="{{ key }}" {% if complaint.status == key %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Priority</label>
+                                    <select id="editPriority" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                                        {% for value, label in priority_choices %}
+                                            <option value="{{ value }}" {% if complaint.priority == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Complainant Name</label>
+                                    <input id="editFullName" type="text" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20" value="{{ complaint.full_name }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Phone Number</label>
+                                    <input id="editPhoneNumber" type="text" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20" value="{{ complaint.phone_number }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+                                    <input id="editEmail" type="email" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20" value="{{ complaint.email }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Source</label>
+                                    <select id="editSource" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                                        {% for value, label in source_choices %}
+                                            <option value="{{ value }}" {% if complaint.complaint_source == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Complaint Details -->
+                        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                            <div class="px-5 md:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-violet-50 via-white to-white">
+                                <h3 class="text-lg font-bold text-slate-900">Complaint Details</h3>
+                                <p class="text-sm text-slate-500 mt-1">Edit issue type, category, and description.</p>
+                            </div>
+                            <div class="p-5 md:p-6 space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Complaint Title</label>
+                                        <input id="editComplaintTitle" type="text" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20" value="{{ complaint.complaint_title }}">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
+                                        <select id="editCategory" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                                            <option value="">General</option>
+                                            {% for cat in categories %}
+                                                <option value="{{ cat.id }}" {% if complaint.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Description</label>
+                                    <textarea id="editDescription" rows="5" class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 resize-y">{{ complaint.description }}</textarea>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Assignment & Response -->
+                        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                            <div class="px-5 md:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-cyan-50 via-white to-white">
+                                <h3 class="text-lg font-bold text-slate-900">Assignment & Response</h3>
+                                <p class="text-sm text-slate-500 mt-1">Edit handler assignment and SLA settings.</p>
+                            </div>
+                            <div class="p-5 md:p-6 space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Assigned Handler</label>
+                                        <select id="editAssignedTo" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20">
+                                            <option value="">Unassigned</option>
+                                            {% for h in handlers %}
+                                                <option value="{{ h.id }}" {% if complaint.assigned_to_id == h.id %}selected{% endif %}>{{ h.get_full_name|default:h.username }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Response Due Days</label>
+                                        <input id="editResponseDueDays" type="number" min="1" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/20" value="{{ complaint.response_due_days }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Side Panel -->
+                    <aside class="space-y-6">
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-brand to-blue-500 text-white">
+                                <h3 class="text-base font-bold">Summary</h3>
+                            </div>
+                            <div class="p-5 space-y-4">
+                                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                                    <p class="text-xs text-slate-500">Case Number</p>
+                                    <p class="text-sm font-bold text-brand mt-1">{{ complaint.case_number|default:"---" }}</p>
+                                </div>
+                                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                                    <p class="text-xs text-slate-500">System Code</p>
+                                    <p class="text-sm font-bold text-slate-700 mt-1">{{ complaint.system_code|default:"---" }}</p>
+                                </div>
+                                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                                    <p class="text-xs text-slate-500">Registered</p>
+                                    <p class="text-sm font-bold text-slate-700 mt-1">{{ complaint.registered_at|date:"M d, Y"|default:"---" }}</p>
+                                </div>
+                                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                                    <p class="text-xs text-slate-500">Assigned To</p>
+                                    <p class="text-sm font-bold text-slate-700 mt-1">{{ complaint.assigned_to.get_full_name|default:complaint.assigned_to.username|default:"Unassigned" }}</p>
+                                </div>
+
+                                <div class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-xs text-emerald-700">
+                                    <p class="font-semibold mb-1"><i class="fa-solid fa-circle-info mr-1"></i> Editing Tips</p>
+                                    <ul class="list-disc pl-4 space-y-1">
+                                        <li>Only fill fields you need to change.</li>
+                                        <li>Changes are saved via PATCH request.</li>
+                                        <li>The complaint list will auto-reflect updates.</li>
+                                    </ul>
+                                </div>
+
+                                <div class="grid gap-2 pt-1">
+                                    <button id="saveEditBtn" class="w-full h-12 rounded-xl bg-brand text-white text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200/50 inline-flex items-center justify-center gap-2">
+                                        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                                    </button>
+                                    <a href="{% url 'admin-all-complaints' %}" class="w-full h-12 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50 inline-flex items-center justify-center gap-2 transition-all">
+                                        Cancel
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+
+        const openSidebar = () => { sidebar.classList.remove('-translate-x-full'); sidebarBackdrop.classList.remove('hidden'); }
+        const closeSidebar = () => { sidebar.classList.add('-translate-x-full'); sidebarBackdrop.classList.add('hidden'); }
+        if (openSidebarBtn) openSidebarBtn.addEventListener('click', openSidebar);
+        if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        // Get complaint ID from URL: /dashboard/complaints/<id>/edit/
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const complaintId = pathParts[pathParts.length - 2];
+
+        const editMessage = document.getElementById('editMessage');
+        const saveEditBtn = document.getElementById('saveEditBtn');
+
+        function showMessage(type, text) {
+            editMessage.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-700', 'border-emerald-200', 'bg-red-50', 'text-red-700', 'border-red-200');
+            editMessage.textContent = text;
+            if (type === 'success') {
+                editMessage.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-200');
+            } else {
+                editMessage.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
+            }
+            setTimeout(() => { editMessage.classList.add('hidden'); }, 5000);
+        }
+
+        saveEditBtn?.addEventListener('click', async () => {
+            const csrftoken = getCookie('csrftoken');
+            saveEditBtn.disabled = true;
+            saveEditBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+            const payload = {
+                full_name: document.getElementById('editFullName').value.trim(),
+                phone_number: document.getElementById('editPhoneNumber').value.trim(),
+                email: document.getElementById('editEmail').value.trim(),
+                complaint_title: document.getElementById('editComplaintTitle').value.trim(),
+                complaint_source: document.getElementById('editSource').value,
+                category_id: document.getElementById('editCategory').value || null,
+                assigned_to_id: document.getElementById('editAssignedTo').value || null,
+                priority: document.getElementById('editPriority').value,
+                status: document.getElementById('editStatus').value,
+                response_due_days: Number(document.getElementById('editResponseDueDays').value) || null,
+                description: document.getElementById('editDescription').value.trim(),
+            };
+
+            try {
+                const res = await fetch(`/api/complaints/${complaintId}/`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => null);
+                    throw new Error(errorData?.detail || 'Failed to save changes');
+                }
+
+                showMessage('success', 'Complaint updated successfully!');
+            } catch (err) {
+                showMessage('error', err.message || 'Failed to save complaint updates.');
+            } finally {
+                saveEditBtn.disabled = false;
+                saveEditBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Changes';
+            }
+        });
+    </script>
+</body>
+</html>
