@@ -1,4 +1,6 @@
 from .base import *
+from decouple import config, Csv
+import dj_database_url
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
