@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Manager Dashboard | RSSB CMS{% endblock %}
+{% block content %}
+<div class="min-h-screen flex bg-page">
+  {% with active_page='manager-dashboard' %}{% include 'includes/sidebar.html' %}{% endwith %}
+  <div class="flex-1 min-w-0">
+    <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+      <div class="max-w-[1700px] mx-auto px-4 md:px-6 py-4">
+        <h1 class="text-2xl font-extrabold text-slate-900">Manager Dashboard</h1>
+        <p class="text-sm text-slate-500">Departmental view: KPIs, schemes, and SLA compliance</p>
+      </div>
+    </header>
+    <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Total</p><p class="text-2xl font-extrabold text-slate-900 mt-1">{{ total_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Active</p><p class="text-2xl font-extrabold text-blue-600 mt-1">{{ active_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-red-200 p-4 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Overdue</p><p class="text-2xl font-extrabold text-red-600 mt-1">{{ overdue_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-purple-200 p-4 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Escalated</p><p class="text-2xl font-extrabold text-purple-600 mt-1">{{ escalated_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-emerald-200 p-4 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Resolved (mo)</p><p class="text-2xl font-extrabold text-emerald-600 mt-1">{{ resolved_this_month }}</p></div>
+        <div class="rounded-2xl bg-white border border-indigo-200 p-4 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Avg Days</p><p class="text-2xl font-extrabold text-indigo-600 mt-1">{{ avg_resolution_days }}</p></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+          <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-chart-pie text-brand"></i> Status Distribution</h3>
+          {% if status_data %}
+            <ul class="space-y-2">
+              {% for s in status_data %}
+                <li class="flex items-center gap-3 text-sm">
+                  <span class="w-32 text-slate-700">{{ s.status }}</span>
+                  <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden"><div class="bg-brand h-2" style="width: {% widthratio s.count total_count 100 %}%"></div></div>
+                  <span class="text-slate-500 w-12 text-right">{{ s.count }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </section>
+
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+          <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-layer-group text-brand"></i> Scheme Performance</h3>
+          <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase"><tr><th class="text-left pb-2">Scheme</th><th class="text-right pb-2">Total</th><th class="text-right pb-2">Active</th><th class="text-right pb-2">Overdue</th></tr></thead>
+            <tbody>
+              {% for s in scheme_stats %}
+                <tr class="border-t border-slate-100"><td class="py-2">{{ s.scheme.name }}</td><td class="text-right">{{ s.total }}</td><td class="text-right">{{ s.active }}</td><td class="text-right {% if s.overdue %}text-red-600 font-bold{% endif %}">{{ s.overdue }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <section class="rounded-2xl bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl p-6 shadow-lg">
+        <h3 class="text-base font-bold mb-2">SLA Compliance</h3>
+        <p class="text-5xl font-extrabold">{{ sla_compliance_pct }}%</p>
+        <p class="text-sm text-blue-100 mt-1">of complaints resolved within their SLA window</p>
+      </section>
+    </main>
+  </div>
+</div>
+{% endblock %}

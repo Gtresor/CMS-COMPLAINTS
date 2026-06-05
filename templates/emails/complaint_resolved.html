@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body{margin:0;padding:0;background:#f5f7fb;font-family:'Segoe UI',Arial,sans-serif}
+.container{max-width:600px;margin:0 auto;padding:32px 20px}
+.header{background:linear-gradient(135deg,#15803D,#22C55E);border-radius:16px 16px 0 0;padding:32px;text-align:center}
+.header h1{color:#fff;margin:0;font-size:24px;font-weight:700}
+.header p{color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px}
+.body-card{background:#fff;border-radius:0 0 16px 16px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.case{font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:700;margin:0 0 4px}
+.title{margin:0;font-size:18px;font-weight:800;color:#111827}
+.resolution-box{background:#f0fdf4;border-left:4px solid #22C55E;padding:16px;margin:20px 0;font-size:14px;color:#111827;line-height:1.6}
+.btn{display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;margin-top:16px}
+.footer{text-align:center;padding:24px;color:#9ca3af;font-size:12px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Complaint Resolved</h1>
+<p>Your complaint has been resolved and is pending closure</p>
+</div>
+<div class="body-card">
+<p style="font-size:16px;color:#374151;margin:0 0 20px">Dear <strong>{{ complainant_name }}</strong>,</p>
+<p style="font-size:14px;color:#6b7280;margin:0 0 20px">We are pleased to inform you that your complaint has been resolved.</p>
+
+<p class="case">{{ case_number }}</p>
+<p class="title">{{ complaint.complaint_title }}</p>
+
+<div class="resolution-box">
+<strong style="display:block;margin-bottom:8px;color:#14532D">Resolution</strong>
+{{ resolution }}
+</div>
+
+{% if resolution_proof_url %}
+<p style="margin:8px 0 0"><a href="{{ resolution_proof_url }}" class="btn">Download Proof of Resolution</a></p>
+{% endif %}
+
+<p style="font-size:14px;color:#6b7280;margin:24px 0 0">Your complaint is now in the final closure stage. You will receive a separate email once it has been formally closed.</p>
+<p style="font-size:14px;color:#6b7280;margin:16px 0 0">If you are not satisfied with the resolution, you have the right to appeal within 30 days by replying to this email with the reason for your appeal.</p>
+</div>
+<div class="footer">
+<p style="margin:0">RSSB Complaints Management System</p>
+<p style="margin:4px 0 0">This is an automated notification. Please do not reply directly to this email.</p>
+</div>
+</div>
+</body>
+</html>

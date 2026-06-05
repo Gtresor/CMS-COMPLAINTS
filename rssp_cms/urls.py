@@ -7,21 +7,28 @@ from django.views.generic.base import RedirectView, TemplateView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from complaints.views import (
+    AccountRedirectView,
     AdminAllComplaintsView,
     AdminAnalyticsView,
     AdminDashboardView,
     AdminSettingsView,
     AdminUserManagementView,
+    AuditorDashboardView,
     ComplaintRegistrationView,
     EditComplaintView,
     HandleComplaintRedirectView,
     HandleComplaintView,
     HandlerDashboardView,
+    ManagerDashboardView,
     RegistrarDashboardView,
     ReviewerDashboardView,
-    AccountRedirectView,
+    SatisfactionSurveyView,
+    SeniorManagementDashboardView,
+    SupervisorDashboardView,
     UserProfileView,
 )
+
+
 
 urlpatterns = [
     path('', RedirectView.as_view(url='/dashboard/admin/', permanent=False), name='home'),
@@ -44,7 +51,16 @@ urlpatterns = [
     path('dashboard/complaints/<int:pk>/handle/', HandleComplaintView.as_view(), name='complaint-handle'),
     path('dashboard/registrar/', RegistrarDashboardView.as_view(), name='registrar-dashboard'),
     path('dashboard/reviewer/', ReviewerDashboardView.as_view(), name='reviewer-dashboard'),
+    # Phase 6: Operational dashboards (Sections 13.1, 13.2, 13.3, 15)
+    path('dashboard/supervisor/', SupervisorDashboardView.as_view(), name='supervisor-dashboard'),
+    path('dashboard/manager/', ManagerDashboardView.as_view(), name='manager-dashboard'),
+    path('dashboard/senior-management/', SeniorManagementDashboardView.as_view(), name='senior-mgmt-dashboard'),
+    path('dashboard/auditor/', AuditorDashboardView.as_view(), name='auditor-dashboard'),
+    # Public satisfaction survey (token-based access from closure email)
+    path('complaints/<int:pk>/survey/<str:token>/', SatisfactionSurveyView.as_view(), name='satisfaction-survey'),
     path('api/', include('complaints.urls')),
+
+
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

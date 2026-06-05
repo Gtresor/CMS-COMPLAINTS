@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Supervisor Dashboard | RSSB CMS{% endblock %}
+{% block content %}
+<div class="min-h-screen flex bg-page">
+  {% with active_page='supervisor-dashboard' %}{% include 'includes/sidebar.html' %}{% endwith %}
+  <div class="flex-1 min-w-0">
+    <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+      <div class="max-w-[1700px] mx-auto px-4 md:px-6 py-4">
+        <h1 class="text-2xl font-extrabold text-slate-900">Supervisor Dashboard</h1>
+        <p class="text-sm text-slate-500">Operational overview of your team and scheme complaints</p>
+      </div>
+    </header>
+    <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+          <p class="text-xs text-slate-500 uppercase font-bold">Total</p>
+          <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ total_count }}</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+          <p class="text-xs text-slate-500 uppercase font-bold">Active</p>
+          <p class="text-2xl font-extrabold text-blue-600 mt-1">{{ active_count }}</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-red-200 p-4 shadow-sm">
+          <p class="text-xs text-slate-500 uppercase font-bold">Overdue</p>
+          <p class="text-2xl font-extrabold text-red-600 mt-1">{{ overdue_count }}</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-amber-200 p-4 shadow-sm">
+          <p class="text-xs text-slate-500 uppercase font-bold">Approaching (24h)</p>
+          <p class="text-2xl font-extrabold text-amber-600 mt-1">{{ approaching_count }}</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-purple-200 p-4 shadow-sm">
+          <p class="text-xs text-slate-500 uppercase font-bold">Escalated</p>
+          <p class="text-2xl font-extrabold text-purple-600 mt-1">{{ escalated_count }}</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-emerald-200 p-4 shadow-sm">
+          <p class="text-xs text-slate-500 uppercase font-bold">Resolved (this month)</p>
+          <p class="text-2xl font-extrabold text-emerald-600 mt-1">{{ resolved_this_month }}</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+          <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-people-group text-brand"></i> Team Workload</h3>
+          {% if workload %}
+            <table class="w-full text-sm">
+              <thead class="text-xs text-slate-500 uppercase">
+                <tr><th class="text-left pb-2">Officer</th><th class="text-right pb-2">Active</th><th class="text-right pb-2">Overdue</th><th class="text-right pb-2">Escalated</th></tr>
+              </thead>
+              <tbody>
+                {% for w in workload %}
+                  <tr class="border-t border-slate-100">
+                    <td class="py-2">{{ w.handler.get_full_name|default:w.handler.username }}</td>
+                    <td class="text-right">{{ w.active }}</td>
+                    <td class="text-right {% if w.overdue %}text-red-600 font-bold{% endif %}">{{ w.overdue }}</td>
+                    <td class="text-right {% if w.escalated %}text-purple-600 font-bold{% endif %}">{{ w.escalated }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-sm text-slate-400">No subordinates assigned to you yet.</p>
+          {% endif %}
+        </section>
+
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+          <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-inbox text-amber-500"></i> Pending Queue (Unassigned)</h3>
+          {% if pending_queue %}
+            <ul class="space-y-2">
+              {% for c in pending_queue %}
+                <li class="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+                  <a href="{% url 'complaint-handle' pk=c.pk %}" class="text-brand hover:underline">{{ c.case_number }} - {{ c.complaint_title|truncatewords:6 }}</a>
+                  <span class="text-xs text-slate-500">{{ c.scheme.name|default:"-" }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-sm text-slate-400">No unassigned complaints in your scope.</p>
+          {% endif %}
+        </section>
+      </div>
+
+      <section class="rounded-2xl bg-white border border-red-200 shadow-sm p-6">
+        <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-fire text-red-600"></i> Top Overdue Complaints</h3>
+        {% if overdue_complaints %}
+          <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase"><tr><th class="text-left pb-2">Case</th><th class="text-left pb-2">Title</th><th class="text-left pb-2">Handler</th><th class="text-right pb-2">Deadline</th></tr></thead>
+            <tbody>
+              {% for c in overdue_complaints %}
+                <tr class="border-t border-slate-100">
+                  <td class="py-2"><a class="text-brand hover:underline" href="{% url 'complaint-handle' pk=c.pk %}">{{ c.case_number }}</a></td>
+                  <td>{{ c.complaint_title|truncatewords:6 }}</td>
+                  <td>{{ c.assigned_to.get_full_name|default:c.assigned_to.username|default:"-" }}</td>
+                  <td class="text-right text-red-600 font-bold">{{ c.sla_deadline|date:'M d H:i' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="text-sm text-slate-400">No overdue complaints in your scope. Great work!</p>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+</div>
+{% endblock %}

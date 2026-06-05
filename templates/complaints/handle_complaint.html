@@ -91,6 +91,22 @@
         .badge.priority-high { background: #FEE2E2; color: #DC2626; }
         .badge.priority-medium { background: #FEF3C7; color: #F59E0B; }
         .badge.priority-low { background: #EFF6FF; color: #2563eb; }
+        .badge.priority-critical { background: #FECACA; color: #7F1D1D; }
+
+        /* Traffic light (Section 14) */
+        .traffic-light { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11px; }
+        .traffic-light .dot { width:10px; height:10px; border-radius:50%; }
+        .traffic-light.green { background:#DCFCE7; color:#166534; }
+        .traffic-light.green .dot { background:#16A34A; box-shadow:0 0 6px #16A34A; }
+        .traffic-light.amber { background:#FEF3C7; color:#92400E; }
+        .traffic-light.amber .dot { background:#F59E0B; box-shadow:0 0 6px #F59E0B; animation: pulseDot 1.6s ease-in-out infinite; }
+        .traffic-light.red { background:#FEE2E2; color:#991B1B; }
+        .traffic-light.red .dot { background:#DC2626; box-shadow:0 0 6px #DC2626; animation: pulseDot 1s ease-in-out infinite; }
+        @keyframes pulseDot { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+
+        .scheme-badge { background: linear-gradient(135deg,#1A56DB,#2563eb); color:#fff; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; }
+        .escalation-badge { background: linear-gradient(135deg,#7F1D1D,#DC2626); color:#fff; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+
 
         .alert {
             display: grid;
@@ -138,10 +154,24 @@
                         <div class="w-full lg:w-auto flex flex-wrap items-center gap-2 md:gap-3">
                             <span class="badge status-{{ complaint.status }}" style="font-size:0.85rem;">{{ complaint.get_status_display }}</span>
                             <span class="badge priority-{{ complaint.priority|default:'low'|lower }}" style="font-size:0.85rem;text-transform:capitalize;">{{ complaint.priority|default:'Low' }}</span>
+                            <span class="traffic-light {{ complaint.traffic_light }}" title="SLA Traffic Light">
+                                <span class="dot"></span>
+                                {{ complaint.traffic_light|upper }}
+                                {% if complaint.hours_remaining is not None and complaint.status not in 'resolved,closed' %}
+                                    · {{ complaint.hours_remaining }}h
+                                {% endif %}
+                            </span>
+                            {% if complaint.scheme %}
+                                <span class="scheme-badge"><i class="fa-solid fa-layer-group mr-1"></i>{{ complaint.scheme.name }}</span>
+                            {% endif %}
+                            {% if complaint.escalation_level > 0 %}
+                                <span class="escalation-badge"><i class="fa-solid fa-arrow-up-wide-short"></i>{{ complaint.escalation_label }}</span>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </header>
+
 
             <main class="max-w-[1600px] mx-auto px-4 md:px-6 py-6 space-y-6">
                 {% if messages %}

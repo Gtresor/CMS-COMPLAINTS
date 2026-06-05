@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body{margin:0;padding:0;background:#f5f7fb;font-family:'Segoe UI',Arial,sans-serif}
+.container{max-width:600px;margin:0 auto;padding:32px 20px}
+.header{background:linear-gradient(135deg,#0F766E,#14B8A6);border-radius:16px 16px 0 0;padding:32px;text-align:center}
+.header h1{color:#fff;margin:0;font-size:24px;font-weight:700}
+.header p{color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px}
+.body-card{background:#fff;border-radius:0 0 16px 16px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px}
+.label{color:#6b7280;font-weight:600}
+.value{color:#111827;font-weight:700;text-align:right}
+.case{font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:700;margin:0 0 4px}
+.title{margin:0;font-size:18px;font-weight:800;color:#111827}
+.highlight{background:#f0fdfa;border-left:4px solid #14B8A6;padding:16px;margin:20px 0}
+.footer{text-align:center;padding:24px;color:#9ca3af;font-size:12px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Complaint Acknowledged</h1>
+<p>Your complaint has been received and assigned for review</p>
+</div>
+<div class="body-card">
+<p style="font-size:16px;color:#374151;margin:0 0 20px">Dear <strong>{{ complainant_name }}</strong>,</p>
+<p style="font-size:14px;color:#6b7280;margin:0 0 20px">Thank you for contacting us. We confirm that we have received your complaint and it is now under review by our team.</p>
+
+<div class="highlight">
+<p class="case">{{ case_number }}</p>
+<p class="title">{{ complaint.complaint_title }}</p>
+</div>
+
+<div class="row"><span class="label">Scheme</span><span class="value">{{ scheme|default:"N/A" }}</span></div>
+<div class="row"><span class="label">Status</span><span class="value">{{ complaint.get_status_display }}</span></div>
+<div class="row"><span class="label">Assigned Officer</span><span class="value">{{ handler_name }}</span></div>
+<div class="row" style="border-bottom:none"><span class="label">Expected Response By</span><span class="value">{{ complaint.sla_deadline|date:'F d, Y'|default:"To be determined" }}</span></div>
+
+<p style="font-size:14px;color:#6b7280;margin:24px 0 0">We are committed to resolving your complaint as quickly as possible. You will receive further updates as we make progress on your case.</p>
+<p style="font-size:14px;color:#6b7280;margin:16px 0 0">If you have any additional information or documents that may help us resolve your complaint, please reply to this email.</p>
+</div>
+<div class="footer">
+<p style="margin:0">RSSB Complaints Management System</p>
+<p style="margin:4px 0 0">This is an automated acknowledgement. Please do not reply directly to this email.</p>
+</div>
+</div>
+</body>
+</html>

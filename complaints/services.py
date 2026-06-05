@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 from django.urls import reverse
 
-from .models import Notification, SystemConfiguration
+from .models import Complaint, Notification, SystemConfiguration
 
 
 def test_smtp_connection(config):
@@ -406,3 +406,255 @@ def _send_assignment_email(complaint, handler):
     except Exception as e:
         error_msg = f"Failed to send email to handler: {str(e)[:100]}"
         return False, error_msg
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: Complainant-facing notifications (Section 8.2 of the design)
+# ---------------------------------------------------------------------------
+
+def _send_complainant_email(complaint, subject, template_name, context, ntype):
+    """
+    Internal helper - send an email to the complainant (if email is on file)
+    and log a Notification row with recipient_type='complainant'.
+
+    Returns (success: bool, message: str).
+    """
+    if not complaint.email:
+        return False, 'No email on file for this complainant.'
+
+    config = SystemConfiguration.get_settings()
+    sender_email = config.sender_email or settings.DEFAULT_FROM_EMAIL
+    sender_name = config.sender_name or 'RSSB Complaints System'
+
+    use_custom_smtp = bool(config.smtp_host and config.smtp_username and config.smtp_password)
+    if not use_custom_smtp and not getattr(settings, 'EMAIL_HOST', None):
+        return False, 'Email service not configured'
+
+    try:
+        html_message = render_to_string(template_name, context)
+        plain_message = strip_tags(html_message)
+
+        if use_custom_smtp:
+            from django.core.mail import EmailMultiAlternatives, get_connection
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=plain_message,
+                from_email=f'{sender_name} <{sender_email}>',
+                to=[complaint.email],
+            )
+            msg.attach_alternative(html_message, 'text/html')
+            connection = get_connection(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                host=config.smtp_host,
+                port=config.smtp_port,
+                username=config.smtp_username,
+                password=config.smtp_password,
+                use_tls=config.use_tls,
+            )
+            msg.connection = connection
+            msg.send()
+        else:
+            from django.core.mail import send_mail
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=sender_email,
+                recipient_list=[complaint.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+
+        # Log the delivery
+        Notification.objects.create(
+            user=None,
+            complaint=complaint,
+            notification_type=ntype,
+            recipient_type='complainant',
+            delivery_channel='email',
+            recipient_email=complaint.email,
+            message=subject,
+            severity='info',
+            metadata={'template': template_name},
+            sent_at=timezone.now(),
+            delivered_at=timezone.now(),
+        )
+        return True, f'Email sent to {complaint.email}'
+
+    except Exception as e:
+        # Log failure
+        Notification.objects.create(
+            user=None,
+            complaint=complaint,
+            notification_type=ntype,
+            recipient_type='complainant',
+            delivery_channel='email',
+            recipient_email=complaint.email or '',
+            message=subject,
+            severity='warning',
+            failure_reason=str(e)[:200],
+            metadata={'template': template_name},
+            sent_at=timezone.now(),
+        )
+        return False, f'Failed: {str(e)[:100]}'
+
+
+def notify_complaint_acknowledged(complaint, performed_by=None):
+    """
+    Step 3 of the workflow (Section 7.2): send acknowledgement to the
+    complainant when the case officer starts the review.
+
+    Returns (success, message).
+    """
+    config = SystemConfiguration.get_settings()
+    if not config.enable_complainant_emails:
+        return False, 'Complainant emails are disabled in system configuration'
+
+    context = {
+        'complaint': complaint,
+        'complainant_name': complaint.full_name or complaint.complainant_name or 'Member',
+        'case_number': complaint.case_number,
+        'handler_name': complaint.assigned_to.get_full_name() if complaint.assigned_to else 'our team',
+        'scheme': complaint.scheme.name if complaint.scheme else '',
+    }
+    subject = f'Complaint {complaint.case_number} - Acknowledgement of Receipt'
+    return _send_complainant_email(
+        complaint, subject, 'emails/complaint_acknowledged.html', context,
+        'complainant_acknowledgement',
+    )
+
+
+def notify_complaint_status_to_complainant(complaint, performed_by=None, status_label=None):
+    """
+    Section 8.2 - send a status-update email to the complainant whenever the
+    complaint status changes (and the complainant has an email on file).
+    """
+    config = SystemConfiguration.get_settings()
+    if not config.enable_complainant_emails:
+        return False, 'Complainant emails are disabled'
+
+    context = {
+        'complaint': complaint,
+        'complainant_name': complaint.full_name or complaint.complainant_name or 'Member',
+        'case_number': complaint.case_number,
+        'status_label': status_label or complaint.get_status_display(),
+        'handler_name': complaint.assigned_to.get_full_name() if complaint.assigned_to else 'our team',
+    }
+    subject = f'Complaint {complaint.case_number} - Status Update: {context["status_label"]}'
+    return _send_complainant_email(
+        complaint, subject, 'emails/complaint_status_update.html', context,
+        'complainant_status_update',
+    )
+
+
+def notify_complaint_resolved(complaint, performed_by=None):
+    """Section 7.2 Step 6 - send resolution confirmation to the complainant."""
+    config = SystemConfiguration.get_settings()
+    if not config.enable_complainant_emails:
+        return False, 'Complainant emails are disabled'
+
+    context = {
+        'complaint': complaint,
+        'complainant_name': complaint.full_name or complaint.complainant_name or 'Member',
+        'case_number': complaint.case_number,
+        'resolution': complaint.final_resolution or 'Your complaint has been resolved.',
+        'resolution_proof_url': complaint.resolution_proof.url if complaint.resolution_proof else '',
+    }
+    subject = f'Complaint {complaint.case_number} - Resolved'
+    return _send_complainant_email(
+        complaint, subject, 'emails/complaint_resolved.html', context,
+        'complainant_resolved',
+    )
+
+
+def notify_complaint_closed(complaint, performed_by=None):
+    """
+    Section 7.2 Step 7 - send closure + satisfaction survey link to the
+    complainant.
+    """
+    config = SystemConfiguration.get_settings()
+    if not config.enable_complainant_emails:
+        return False, 'Complainant emails are disabled'
+
+    # Build token-based survey URL (matches SatisfactionSurveyView._make_token)
+    import hashlib
+    token_base = f'{complaint.case_number}-survey-{complaint.pk}'
+    token = hashlib.sha256(token_base.encode()).hexdigest()[:32]
+    survey_url = ''
+    if hasattr(settings, 'SITE_URL'):
+        survey_url = f'{settings.SITE_URL}/complaints/{complaint.pk}/survey/{token}/'
+
+    context = {
+        'complaint': complaint,
+        'complainant_name': complaint.full_name or complaint.complainant_name or 'Member',
+        'case_number': complaint.case_number,
+        'survey_url': survey_url,
+    }
+    subject = f'Complaint {complaint.case_number} - Closed'
+    return _send_complainant_email(
+        complaint, subject, 'emails/complaint_closed.html', context,
+        'complainant_closed',
+    )
+
+
+
+def notify_escalation_email(escalation_log, complaint):
+    """
+    Section 8.2 - send escalation email (in addition to the in-app
+    notification created in escalation.py).
+    """
+    config = SystemConfiguration.get_settings()
+    if not config.enable_escalation_emails:
+        return False, 'Escalation emails are disabled'
+
+    target = escalation_log.escalated_to
+    if not target or not target.email:
+        return False, 'No escalation target / email'
+
+    sender_email = config.sender_email or settings.DEFAULT_FROM_EMAIL
+    sender_name = config.sender_name or 'RSSB Complaints System'
+    use_custom_smtp = bool(config.smtp_host and config.smtp_username and config.smtp_password)
+    if not use_custom_smtp and not getattr(settings, 'EMAIL_HOST', None):
+        return False, 'Email service not configured'
+
+    level_label = dict(Complaint.ESCALATION_LEVEL_CHOICES).get(escalation_log.level, '')
+    context = {
+        'complaint': complaint,
+        'escalation': escalation_log,
+        'level_label': level_label,
+        'trigger_reason': escalation_log.trigger_reason,
+        'overdue_hours': max(0, (timezone.now() - complaint.sla_deadline).total_seconds() // 3600) if complaint.sla_deadline else 0,
+    }
+    subject = f'[ESCALATION] Complaint {complaint.case_number} - {level_label}'
+    template = 'emails/escalation_alert.html'
+
+    try:
+        html_message = render_to_string(template, context)
+        plain_message = strip_tags(html_message)
+
+        if use_custom_smtp:
+            from django.core.mail import EmailMultiAlternatives, get_connection
+            msg = EmailMultiAlternatives(
+                subject=subject, body=plain_message,
+                from_email=f'{sender_name} <{sender_email}>',
+                to=[target.email],
+            )
+            msg.attach_alternative(html_message, 'text/html')
+            connection = get_connection(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                host=config.smtp_host, port=config.smtp_port,
+                username=config.smtp_username, password=config.smtp_password,
+                use_tls=config.use_tls,
+            )
+            msg.connection = connection
+            msg.send()
+        else:
+            from django.core.mail import send_mail
+            send_mail(
+                subject=subject, message=plain_message, from_email=sender_email,
+                recipient_list=[target.email], html_message=html_message, fail_silently=False,
+            )
+        return True, f'Escalation email sent to {target.email}'
+    except Exception as e:
+        return False, f'Failed: {str(e)[:100]}'
+
+

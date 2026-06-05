@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thank You | RSSB CMS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="flex items-center justify-center p-4 bg-gradient-to-br from-emerald-50 to-green-100 min-h-screen">
+<div class="max-w-xl w-full bg-white rounded-2xl shadow-2xl p-8 text-center">
+  <div class="h-20 w-20 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
+    <i class="fa-solid fa-check text-4xl"></i>
+  </div>
+  <h1 class="text-2xl font-extrabold text-slate-900">Thank you!</h1>
+  <p class="text-sm text-slate-500 mt-2">Your feedback for complaint <strong>{{ complaint.case_number }}</strong> has been recorded.</p>
+
+  <div class="mt-6 inline-flex items-center gap-1 text-3xl text-amber-400">
+    {% for i in '12345'|make_list %}
+      {% if forloop.counter <= rating %}
+        <i class="fa-solid fa-star"></i>
+      {% else %}
+        <i class="fa-regular fa-star text-slate-300"></i>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <p class="text-xs text-slate-400 mt-2">Your rating: {{ rating }} / 5</p>
+
+  <div class="mt-6 rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">
+    Your input helps us improve our services for all members. We value your time and trust.
+  </div>
+
+  <p class="text-xs text-slate-400 mt-6">You may close this window.</p>
+</div>
+</body>
+</html>

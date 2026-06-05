@@ -190,6 +190,14 @@
                                         </div>
                                     </div>
 
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Member Number</label>
+                                        <div class="relative">
+                                            <i class="fa-solid fa-fingerprint absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <input type="text" name="member_number" id="memberNumber" class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all" placeholder="Scheme membership number">
+                                        </div>
+                                    </div>
+
                                     <div class="md:col-span-2">
                                         <label class="block text-sm font-semibold text-slate-700 mb-1.5">Bank / Institution</label>
                                         <div class="relative">
@@ -198,6 +206,7 @@
                                         </div>
                                     </div>
                                 </div>
+
 
                                 <aside class="rounded-2xl border border-slate-200 p-4 bg-slate-50/60">
                                     <div class="rounded-xl border border-dashed border-blue-200 bg-blue-50/60 p-5 text-center mb-4">
@@ -221,6 +230,46 @@
                             </div>
 
                             <div class="p-5 md:p-6 space-y-4">
+                                <!-- Phase 1: Scheme, Complaint Type, Location -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Scheme</label>
+                                        <div class="relative">
+                                            <i class="fa-solid fa-layer-group absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <select name="scheme" id="schemeSelect" class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all appearance-none">
+                                                <option value="">Select scheme</option>
+                                                {% for s in schemes %}
+                                                    <option value="{{ s.id }}">{{ s.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Complaint Type</label>
+                                        <div class="relative">
+                                            <i class="fa-solid fa-tag absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <select name="complaint_type" id="complaintTypeSelect" class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all appearance-none">
+                                                <option value="">Select type</option>
+                                                {% for t in complaint_types %}
+                                                    <option value="{{ t.id }}" data-sla="{{ t.default_sla_hours }}" data-priority="{{ t.default_priority }}">{{ t.code }} · {{ t.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Location / Branch</label>
+                                        <div class="relative">
+                                            <i class="fa-solid fa-location-dot absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <select name="location" id="locationSelect" class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all appearance-none">
+                                                <option value="">Select location</option>
+                                                {% for l in locations %}
+                                                    <option value="{{ l.id }}">{{ l.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-semibold text-slate-700 mb-1.5">Complaint Title <span class="text-red-500">*</span></label>
@@ -232,6 +281,7 @@
                                         <input type="date" name="complaint_date" id="complaintDate" required class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all">
                                     </div>
                                 </div>
+
 
                                 <div>
                                     <div class="flex items-center justify-between mb-1.5">

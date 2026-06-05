@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Auditor Dashboard | RSSB CMS{% endblock %}
+{% block content %}
+<div class="min-h-screen flex bg-page">
+  {% with active_page='auditor-dashboard' %}{% include 'includes/sidebar.html' %}{% endwith %}
+  <div class="flex-1 min-w-0">
+    <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+      <div class="max-w-[1700px] mx-auto px-4 md:px-6 py-4">
+        <h1 class="text-2xl font-extrabold text-slate-900">Auditor Dashboard</h1>
+        <p class="text-sm text-slate-500">Read-only audit trail access (Section 15 of the design)</p>
+      </div>
+    </header>
+    <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Total Status Changes</p><p class="text-3xl font-extrabold text-slate-900 mt-1">{{ total_actions }}</p></div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Last 30 Days</p><p class="text-3xl font-extrabold text-blue-600 mt-1">{{ actions_last_30_days }}</p></div>
+        <div class="rounded-2xl bg-white border border-purple-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Total Escalations</p><p class="text-3xl font-extrabold text-purple-600 mt-1">{{ total_escalations }}</p></div>
+        <div class="rounded-2xl bg-white border border-red-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Open Escalations</p><p class="text-3xl font-extrabold text-red-600 mt-1">{{ open_escalations }}</p></div>
+      </div>
+
+      <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-clock-rotate-left text-brand"></i> Recent Status Changes (last 30)</h3>
+        {% if recent_status_changes %}
+          <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase"><tr><th class="text-left pb-2">When</th><th class="text-left pb-2">Case</th><th class="text-left pb-2">From</th><th class="text-left pb-2">To</th><th class="text-left pb-2">By</th></tr></thead>
+            <tbody>
+              {% for s in recent_status_changes %}
+                <tr class="border-t border-slate-100">
+                  <td class="py-1.5 text-xs text-slate-500">{{ s.changed_at|date:'M d H:i' }}</td>
+                  <td>{{ s.complaint.case_number|default:"-" }}</td>
+                  <td>{{ s.old_status|default:"-" }}</td>
+                  <td class="font-semibold">{{ s.new_status }}</td>
+                  <td>{{ s.changed_by.get_full_name|default:s.changed_by.username|default:"-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="text-sm text-slate-400">No status changes recorded yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-arrow-up-wide-short text-purple-600"></i> Recent Escalations (last 20)</h3>
+        {% if recent_escalations %}
+          <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase"><tr><th class="text-left pb-2">When</th><th class="text-left pb-2">Case</th><th class="text-left pb-2">Level</th><th class="text-left pb-2">Reason</th><th class="text-left pb-2">Escalated To</th><th class="text-left pb-2">Resolved?</th></tr></thead>
+            <tbody>
+              {% for e in recent_escalations %}
+                <tr class="border-t border-slate-100">
+                  <td class="py-1.5 text-xs text-slate-500">{{ e.triggered_at|date:'M d H:i' }}</td>
+                  <td>{{ e.complaint.case_number|default:"-" }}</td>
+                  <td><span class="rounded-full bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5">L{{ e.level }}</span></td>
+                  <td class="text-xs">{{ e.trigger_reason }}</td>
+                  <td>{{ e.escalated_to.get_full_name|default:e.escalated_to.username|default:"-" }}</td>
+                  <td>{% if e.resolved_at %}<span class="text-emerald-600 text-xs font-bold">Resolved</span>{% else %}<span class="text-red-600 text-xs font-bold">Open</span>{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="text-sm text-slate-400">No escalations recorded yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl p-6 shadow-lg">
+        <h3 class="text-base font-bold mb-2">Member Satisfaction Summary</h3>
+        <p class="text-5xl font-extrabold">{{ avg_rating|floatformat:2 }} <span class="text-2xl">/ 5</span></p>
+        <p class="text-sm text-emerald-100 mt-1">Average rating across {{ satisfaction_count }} submitted surveys</p>
+      </section>
+    </main>
+  </div>
+</div>
+{% endblock %}

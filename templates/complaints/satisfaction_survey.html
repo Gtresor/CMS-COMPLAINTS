@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Satisfaction Survey | RSSB CMS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<style>
+  body{background:linear-gradient(135deg,#f5f7fb 0%,#e0e7ff 100%);min-height:100vh;font-family:'Segoe UI',Arial,sans-serif}
+  .star { font-size:42px; cursor:pointer; color:#d1d5db; transition:all 0.2s; user-select:none; }
+  .star.active, .star:hover, .star:hover ~ .star { color:#f59e0b; transform:scale(1.15); }
+  .star-rating { display:inline-flex; flex-direction:row-reverse; gap:6px; justify-content:center; }
+  .star-rating .star:hover, .star-rating .star:hover ~ .star { color:#f59e0b; }
+  .star-rating input[type="radio"] { display:none; }
+  .star-rating input[type="radio"]:checked ~ .star { color:#f59e0b; }
+</style>
+</head>
+<body class="flex items-center justify-center p-4">
+<div class="max-w-2xl w-full">
+  <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div class="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-8 text-center">
+      <div class="h-16 w-16 mx-auto rounded-full bg-white/20 backdrop-blur flex items-center justify-center mb-3">
+        <i class="fa-solid fa-star text-3xl"></i>
+      </div>
+      <h1 class="text-2xl font-extrabold">How was our service?</h1>
+      <p class="text-emerald-50 mt-2 text-sm">Your feedback helps us improve our services for everyone.</p>
+    </div>
+
+    <div class="p-8">
+      <!-- Case reference card -->
+      <div class="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-6 flex items-center gap-3">
+        <i class="fa-solid fa-folder-open text-emerald-600 text-xl"></i>
+        <div>
+          <p class="text-xs text-slate-500 uppercase font-bold">Case Number</p>
+          <p class="text-base font-extrabold text-slate-800">{{ complaint.case_number }}</p>
+        </div>
+      </div>
+
+      {% if messages %}
+        <div class="space-y-2 mb-4">
+          {% for message in messages %}
+            <div class="rounded-xl border px-4 py-3 text-sm font-semibold {% if message.tags == 'success' %}bg-emerald-50 text-emerald-700 border-emerald-200{% else %}bg-red-50 text-red-700 border-red-200{% endif %}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if already_submitted %}
+        <div class="rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
+          <i class="fa-solid fa-circle-check text-amber-500 text-4xl mb-2"></i>
+          <p class="text-base font-bold text-amber-700">Thank you — your feedback has already been received.</p>
+          <p class="text-sm text-amber-600 mt-2">Each complaint can only be rated once. If you need to add more details, please contact us directly.</p>
+        </div>
+      {% else %}
+        <form method="post" class="space-y-6">
+          {% csrf_token %}
+          <input type="hidden" name="email" value="{{ complaint.email }}">
+
+          <!-- Star rating -->
+          <div class="text-center">
+            <p class="text-sm font-bold text-slate-700 mb-3">Rate your experience (1 = very poor, 5 = excellent)</p>
+            <div class="star-rating">
+              {% for r in '54321'|make_list %}
+                <input type="radio" name="rating" id="rating{{ r }}" value="{{ r }}" required>
+                <label for="rating{{ r }}" class="star" title="{{ r }} star{{ r|length|yesno:'s,' }}">★</label>
+              {% endfor %}
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Click a star to rate</p>
+          </div>
+
+          <!-- Comments -->
+          <div>
+            <label for="comments" class="block text-sm font-bold text-slate-700 mb-2">Additional comments (optional)</label>
+            <textarea id="comments" name="comments" rows="4" maxlength="2000" class="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 transition-all" placeholder="Tell us what went well or how we can improve..."></textarea>
+          </div>
+
+          <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-4 text-base font-extrabold text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200/70 transition-all">
+            <i class="fa-solid fa-paper-plane"></i> Submit Feedback
+          </button>
+
+          <p class="text-xs text-slate-400 text-center">Your response is anonymous and helps us improve our services.</p>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <p class="text-center text-xs text-slate-500 mt-4">RSSB Complaints Management System · Powered by RSSB</p>
+</div>
+</body>
+</html>

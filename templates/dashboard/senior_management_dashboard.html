@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Senior Management Dashboard | RSSB CMS{% endblock %}
+{% block content %}
+<div class="min-h-screen flex bg-page">
+  {% with active_page='senior-mgmt-dashboard' %}{% include 'includes/sidebar.html' %}{% endwith %}
+  <div class="flex-1 min-w-0">
+    <header class="sticky top-0 z-20 border-b border-slate-200 bg-page/90 backdrop-blur-xl">
+      <div class="max-w-[1700px] mx-auto px-4 md:px-6 py-4">
+        <h1 class="text-2xl font-extrabold text-slate-900">Senior Management Dashboard</h1>
+        <p class="text-sm text-slate-500">Strategic institution-wide KPIs and trends</p>
+      </div>
+    </header>
+    <main class="max-w-[1700px] mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Total Volume</p><p class="text-3xl font-extrabold text-slate-900 mt-1">{{ total_count }}</p><p class="text-xs text-slate-400 mt-1">{{ ytd_count }} YTD</p></div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Active</p><p class="text-3xl font-extrabold text-blue-600 mt-1">{{ active_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-red-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Overdue</p><p class="text-3xl font-extrabold text-red-600 mt-1">{{ overdue_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-purple-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Escalated</p><p class="text-3xl font-extrabold text-purple-600 mt-1">{{ escalated_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-red-300 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Critical Priority</p><p class="text-3xl font-extrabold text-red-700 mt-1">{{ critical_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-amber-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">High Priority</p><p class="text-3xl font-extrabold text-amber-600 mt-1">{{ high_count }}</p></div>
+        <div class="rounded-2xl bg-white border border-emerald-200 p-5 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Resolved YTD</p><p class="text-3xl font-extrabold text-emerald-600 mt-1">{{ resolved_ytd }}</p></div>
+        <div class="rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-5 shadow-lg"><p class="text-xs text-blue-100 uppercase font-bold">Resolution Rate</p><p class="text-3xl font-extrabold mt-1">{{ resolution_rate_pct }}%</p></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+          <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-chart-line text-brand"></i> 12-Month Volume Trend</h3>
+          {% if trend_data %}
+            <div class="flex items-end gap-1 h-32">
+              {% for t in trend_data %}
+                <div class="flex-1 bg-gradient-to-t from-blue-100 to-blue-500 rounded-t" title="{{ t.label }}: {{ t.count }}" style="height: {% widthratio t.count 50 100 %}%; min-height: 4px;"></div>
+              {% endfor %}
+            </div>
+            <div class="flex justify-between text-xs text-slate-400 mt-2"><span>{{ trend_data.0.label }}</span><span>{{ trend_data|last.label }}</span></div>
+          {% else %}
+            <p class="text-sm text-slate-400">No volume data in the last 12 months.</p>
+          {% endif %}
+        </section>
+
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+          <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-layer-group text-brand"></i> Avg Resolution Time by Scheme</h3>
+          <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase"><tr><th class="text-left pb-2">Scheme</th><th class="text-right pb-2">Volume</th><th class="text-right pb-2">Avg Days</th></tr></thead>
+            <tbody>
+              {% for s in scheme_performance %}
+                <tr class="border-t border-slate-100"><td class="py-2">{{ s.scheme.name }}</td><td class="text-right">{{ s.volume }}</td><td class="text-right">{{ s.avg_days }}d</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+          <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-fire text-red-600"></i> Top 10 Recurring Issues</h3>
+          {% if top_issues %}
+            <ol class="space-y-2 text-sm">
+              {% for i in top_issues %}
+                <li class="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span class="text-slate-700">#{{ forloop.counter }} {{ i.complaint_type__name|default:"Unclassified" }} <span class="text-slate-400 text-xs">in {{ i.scheme__name|default:"-" }}</span></span>
+                  <span class="font-bold text-brand">{{ i.c }}</span>
+                </li>
+              {% endfor %}
+            </ol>
+          {% else %}
+            <p class="text-sm text-slate-400">No issues recorded yet.</p>
+          {% endif %}
+        </section>
+
+        <section class="rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-2xl p-6 shadow-lg">
+          <h3 class="text-base font-bold mb-2">Member Satisfaction</h3>
+          <p class="text-5xl font-extrabold">{{ avg_satisfaction }} <span class="text-2xl">/ 5</span></p>
+          <p class="text-sm text-amber-100 mt-1">Average rating across {{ total_ratings }} submitted surveys</p>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body{margin:0;padding:0;background:#f5f7fb;font-family:'Segoe UI',Arial,sans-serif}
+.container{max-width:600px;margin:0 auto;padding:32px 20px}
+.header{background:linear-gradient(135deg,#1F2937,#374151);border-radius:16px 16px 0 0;padding:32px;text-align:center}
+.header h1{color:#fff;margin:0;font-size:24px;font-weight:700}
+.header p{color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px}
+.body-card{background:#fff;border-radius:0 0 16px 16px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.case{font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:700;margin:0 0 4px}
+.title{margin:0;font-size:18px;font-weight:800;color:#111827}
+.survey-box{background:#fffbeb;border:2px dashed #f59e0b;border-radius:12px;padding:20px;margin:24px 0;text-align:center}
+.stars{font-size:32px;color:#f59e0b;letter-spacing:4px;margin:12px 0}
+.btn{display:inline-block;background:#f59e0b;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px}
+.footer{text-align:center;padding:24px;color:#9ca3af;font-size:12px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Complaint Closed</h1>
+<p>Your complaint has been formally closed</p>
+</div>
+<div class="body-card">
+<p style="font-size:16px;color:#374151;margin:0 0 20px">Dear <strong>{{ complainant_name }}</strong>,</p>
+<p style="font-size:14px;color:#6b7280;margin:0 0 20px">Your complaint has been formally closed. Thank you for giving us the opportunity to address your concern.</p>
+
+<p class="case">{{ case_number }}</p>
+<p class="title">{{ complaint.complaint_title }}</p>
+
+<div class="survey-box">
+<strong style="display:block;margin-bottom:8px;font-size:16px;color:#92400E">How would you rate our service?</strong>
+<p style="margin:8px 0;color:#78350F;font-size:14px">Your feedback helps us improve our services for everyone.</p>
+<div class="stars">★ ★ ★ ★ ★</div>
+{% if survey_url %}
+<a href="{{ survey_url }}" class="btn">Submit Your Rating</a>
+{% else %}
+<p style="font-size:13px;color:#92400E;margin:8px 0 0">Reply to this email with a rating from 1-5 to share your feedback.</p>
+{% endif %}
+</div>
+
+<p style="font-size:14px;color:#6b7280;margin:16px 0 0">If you have any further questions, please contact us and reference your case number above.</p>
+</div>
+<div class="footer">
+<p style="margin:0">RSSB Complaints Management System</p>
+<p style="margin:4px 0 0">This is an automated notification. Please do not reply directly to this email.</p>
+</div>
+</div>
+</body>
+</html>

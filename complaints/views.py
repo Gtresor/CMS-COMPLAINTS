@@ -266,6 +266,87 @@ class AccountRedirectView(LoginRequiredMixin, RedirectView):
         return reverse('home')
 
 
+class SatisfactionSurveyView(View):
+    """
+    Public (no login) satisfaction survey endpoint.  Reached from the closure
+    email's survey_url.  Supports GET (form) and POST (submission).
+    """
+    template_name = 'complaints/satisfaction_survey.html'
+
+    def _get_complaint(self, pk, token):
+        from .models import Complaint, SatisfactionSurvey
+        complaint = get_object_or_404(Complaint, pk=pk)
+        # Token = signed str(complaint.case_number + 'survey')
+        expected = self._make_token(complaint)
+        if token != expected:
+            return None
+        return complaint
+
+    @staticmethod
+    def _make_token(complaint):
+        import hashlib
+        base = f'{complaint.case_number}-survey-{complaint.pk}'
+        return hashlib.sha256(base.encode()).hexdigest()[:32]
+
+    def get(self, request, pk, token, *args, **kwargs):
+        from .models import SatisfactionSurvey
+        complaint = self._get_complaint(pk, token)
+        if not complaint:
+            return TemplateResponse(request, 'complaints/satisfaction_survey_invalid.html', status=403)
+        already_submitted = SatisfactionSurvey.objects.filter(complaint=complaint).exists()
+        context = {
+            'complaint': complaint,
+            'already_submitted': already_submitted,
+            'token': token,
+        }
+        return TemplateResponse(request, self.template_name, context)
+
+    def post(self, request, pk, token, *args, **kwargs):
+        from .models import SatisfactionSurvey
+        from django.utils import timezone
+        complaint = self._get_complaint(pk, token)
+        if not complaint:
+            return TemplateResponse(request, 'complaints/satisfaction_survey_invalid.html', status=403)
+        if SatisfactionSurvey.objects.filter(complaint=complaint).exists():
+            context = {
+                'complaint': complaint,
+                'already_submitted': True,
+                'token': token,
+            }
+            return TemplateResponse(request, self.template_name, context)
+
+        try:
+            rating = int(request.POST.get('rating', 0))
+        except (ValueError, TypeError):
+            rating = 0
+        if rating < 1 or rating > 5:
+            messages.error(request, 'Please choose a rating between 1 and 5.')
+            return redirect('satisfaction-survey', pk=pk, token=token)
+
+        comments = (request.POST.get('comments') or '').strip()
+        submitted_by_email = (request.POST.get('email') or '').strip() or complaint.email
+
+        SatisfactionSurvey.objects.create(
+            complaint=complaint,
+            rating=rating,
+            comments=comments,
+            submitted_by_email=submitted_by_email,
+        )
+        # Also stamp the complaint itself
+        complaint.satisfaction_rating = rating
+        complaint.satisfaction_comments = comments
+        complaint.satisfaction_submitted_at = timezone.now()
+        complaint.save(update_fields=['satisfaction_rating', 'satisfaction_comments', 'satisfaction_submitted_at'])
+
+        context = {
+            'complaint': complaint,
+            'submitted': True,
+            'rating': rating,
+        }
+        return TemplateResponse(request, 'complaints/satisfaction_survey_thanks.html', context)
+
+
+
 class RegistrarDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'complaints/registrar_dashboard.html'
 
@@ -626,22 +707,59 @@ class HandleComplaintView(LoginRequiredMixin, View):
                 messages.error(request, 'Invalid status value.')
                 return redirect('complaint-handle', pk=complaint.pk)
 
+            previous_status = complaint.status
+
             # Record the action
             ComplaintAction.objects.create(
                 complaint=complaint,
                 handler=request.user,
                 action_taken=action_taken,
                 action_description=action_description,
-                previous_status=complaint.status,
+                previous_status=previous_status,
                 new_status=new_status,
             )
 
             complaint.status = new_status
+            complaint._last_changer = request.user
             complaint.save()
 
-            # Send notification about status update
+            # Send internal notification about status update
             from .services import notify_status_update
             notify_status_update(complaint, request.user)
+
+            # Phase 4: Send complainant-facing emails based on the new status
+            from .services import (
+                notify_complaint_status_to_complainant,
+                notify_complaint_acknowledged,
+                notify_complaint_resolved,
+                notify_complaint_closed,
+            )
+
+            try:
+                if new_status == 'under_review' and previous_status not in {'under_review', 'in_progress'}:
+                    notify_complaint_acknowledged(complaint, performed_by=request.user)
+                elif new_status == 'resolved':
+                    notify_complaint_resolved(complaint, performed_by=request.user)
+                elif new_status == 'closed':
+                    notify_complaint_closed(complaint, performed_by=request.user)
+                else:
+                    notify_complaint_status_to_complainant(complaint, performed_by=request.user)
+            except Exception:
+                # Email failures should never break the workflow
+                pass
+
+            # Phase 3: If the complaint was previously escalated and is now
+            # being resolved/closed, mark the escalation as resolved.
+            if new_status in {'resolved', 'closed', 'in_progress'}:
+                from .escalation import resolve_escalation
+                try:
+                    resolve_escalation(complaint, resolved_by=request.user, notes=f'Auto-resolved on status change to {new_status}')
+                except Exception:
+                    pass
+                if new_status in {'resolved', 'closed'}:
+                    complaint.escalation_level = 0
+                    complaint.save(update_fields=['escalation_level'])
+
 
         # Add a note if provided
         if note_text:
@@ -755,38 +873,60 @@ class ComplaintRegistrationView(LoginRequiredMixin, View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
+        from .models import Scheme, ComplaintType, Location
         handlers = User.objects.filter(role='handler', is_active=True).order_by('username')
+        schemes = Scheme.objects.filter(is_active=True).order_by('name')
+        complaint_types = ComplaintType.objects.filter(is_active=True).order_by('code')
+        locations = Location.objects.filter(is_active=True).order_by('name')
         context = {
             'handlers': handlers,
             'source_choices': Complaint.SOURCE_CHOICES,
+            'schemes': schemes,
+            'complaint_types': complaint_types,
+            'locations': locations,
+            'priority_choices': Complaint.PRIORITY_CHOICES,
         }
         return TemplateResponse(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
+        from .models import Scheme, ComplaintType, Location
         categories = Category.objects.order_by('name')
         handlers = User.objects.filter(role='handler', is_active=True).order_by('username')
+        schemes = Scheme.objects.filter(is_active=True).order_by('name')
+        complaint_types = ComplaintType.objects.filter(is_active=True).order_by('code')
+        locations = Location.objects.filter(is_active=True).order_by('name')
 
         # New form fields
         case_number = (request.POST.get('case_number') or '').strip()
         full_name = (request.POST.get('full_name') or '').strip()
         phone_number = (request.POST.get('phone_number') or '').strip()
-        complaint_source = request.POST.get('complaint_source') or 'online'
+        complaint_source = request.POST.get('complaint_source') or 'web_form'
         email = (request.POST.get('email') or '').strip()
         national_id = (request.POST.get('national_id') or '').strip()
+        member_number = (request.POST.get('member_number') or '').strip()
         bank_institution = (request.POST.get('bank_institution') or '').strip()
         complaint_title = (request.POST.get('complaint_title') or '').strip()
         complaint_date = request.POST.get('complaint_date')
         description = (request.POST.get('description') or '').strip()
         assigned_to_id = request.POST.get('assigned_to')
         response_due_days = request.POST.get('response_due_days')
+        # Phase 1 fields
+        scheme_id = request.POST.get('scheme') or None
+        complaint_type_id = request.POST.get('complaint_type') or None
+        location_id = request.POST.get('location') or None
 
         def render_form_error():
             context = {
                 'categories': categories,
                 'handlers': handlers,
                 'source_choices': Complaint.SOURCE_CHOICES,
+                'schemes': schemes,
+                'complaint_types': complaint_types,
+                'locations': locations,
+                'priority_choices': Complaint.PRIORITY_CHOICES,
             }
             return TemplateResponse(request, self.template_name, context)
+
 
         # Validate required fields
         if not full_name or not phone_number or not complaint_title or not complaint_date or not assigned_to_id or not response_due_days:
@@ -817,6 +957,14 @@ class ComplaintRegistrationView(LoginRequiredMixin, View):
             messages.error(request, 'Response due days must be a positive integer.')
             return render_form_error()
 
+        # Resolve optional FKs
+        scheme = Scheme.objects.filter(id=scheme_id).first() if scheme_id else None
+        ctype = ComplaintType.objects.filter(id=complaint_type_id).first() if complaint_type_id else None
+        location = Location.objects.filter(id=location_id).first() if location_id else None
+
+        # Convert days to hours for the new sla_hours field
+        sla_hours_value = response_due_days_int * 24
+
         # Create complaint with new fields
         complaint = Complaint(
             case_number=case_number if case_number else '',  # Will be auto-generated if empty
@@ -825,21 +973,39 @@ class ComplaintRegistrationView(LoginRequiredMixin, View):
             complaint_source=complaint_source,
             email=email if email else '',
             national_id=national_id if national_id else '',
+            member_number=member_number if member_number else '',
             bank_institution=bank_institution if bank_institution else '',
             complaint_title=complaint_title,
             complaint_date=complaint_date,
             description=description if description else '',
             assigned_to=assigned_to,
+            assigned_by=request.user,
             response_due_days=response_due_days_int,
+            response_due_hours=sla_hours_value,
+            sla_hours=sla_hours_value,
+            sla_mode='manual',
+            scheme=scheme,
+            complaint_type=ctype,
+            location=location,
             registered_by=request.user,
             status='pending',  # Default status as per requirements
         )
         complaint.save()
 
+
+        # Phase 2: Auto-routing fallback.  If the user picked a specific
+        # handler we keep that; otherwise the routing engine picks the
+        # best-fit officer based on scheme / location / workload.
+        if not complaint.assigned_to_id:
+            from .routing import auto_route
+            auto_route(complaint, save=False, triggered_by=request.user)
+            if complaint.assigned_to_id:
+                complaint.save()
+
         # Send notifications
         from .services import notify_complaint_created, notify_complaint_assigned
         notify_complaint_created(complaint, performed_by=request.user)
-        
+
         email_feedback = ""
         if complaint.assigned_to:
             email_success, email_message = notify_complaint_assigned(complaint, assigned_by=request.user)
@@ -849,6 +1015,13 @@ class ComplaintRegistrationView(LoginRequiredMixin, View):
             else:
                 email_feedback = f" ⚠ {email_message}"
                 messages.warning(request, email_message)
+        else:
+            messages.warning(
+                request,
+                f"Complaint {complaint.case_number} saved but no available handler was found. "
+                "The scheme supervisor has been notified to assign manually.",
+            )
+
 
         # Handle attachments
         for upload in request.FILES.getlist('attachments'):
@@ -1021,8 +1194,239 @@ class AdminAnalyticsView(LoginRequiredMixin, TemplateView):
         return sorted(stats, key=lambda s: s['resolution_rate_percent'], reverse=True)
 
 
+class SupervisorDashboardView(LoginRequiredMixin, TemplateView):
+    """Section 13.1 — Operational dashboard for supervisors (per-scheme view)."""
+    template_name = 'dashboard/supervisor_dashboard.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if request.user.role != 'supervisor':
+            raise DjangoPermissionDenied('Only supervisors may access this dashboard.')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        from .models import Scheme
+        ctx = super().get_context_data(**kwargs)
+        today = timezone.localdate()
+        me = self.request.user
+        # Scope: complaints in schemes the supervisor manages OR their subordinates
+        subordinate_ids = list(me.subordinates.values_list('id', flat=True))
+        base = Complaint.objects.filter(
+            Q(assigned_to_id__in=subordinate_ids) | Q(scheme__manager=me)
+        )
+        active = base.exclude(status__in=['resolved', 'closed'])
+        ctx.update({
+            'total_count': base.count(),
+            'active_count': active.count(),
+            'overdue_count': active.filter(sla_deadline__lt=today).count(),
+            'approaching_count': active.filter(
+                sla_deadline__gte=today,
+                sla_deadline__lte=today + timedelta(hours=24),
+            ).count(),
+            'escalated_count': active.filter(escalation_level__gt=0).count(),
+            'resolved_this_month': base.filter(
+                status='resolved', date_resolved__date__gte=today.replace(day=1),
+            ).count(),
+            'my_subordinates': me.subordinates.filter(role='handler', is_active=True),
+            'pending_queue': base.filter(assigned_to__isnull=True).order_by('-date_entered_system')[:10],
+            'overdue_complaints': active.filter(sla_deadline__lt=today).order_by('sla_deadline')[:10],
+            'workload': [
+                {
+                    'handler': h,
+                    'active': base.filter(assigned_to=h).exclude(status__in=['resolved', 'closed']).count(),
+                    'overdue': base.filter(assigned_to=h, sla_deadline__lt=today).exclude(status__in=['resolved', 'closed']).count(),
+                    'escalated': base.filter(assigned_to=h, escalation_level__gt=0).exclude(status__in=['resolved', 'closed']).count(),
+                }
+                for h in me.subordinates.filter(role='handler', is_active=True)
+            ],
+            'schemes': Scheme.objects.filter(manager=me) | Scheme.objects.filter(department__users=me),
+            'active_page': 'supervisor-dashboard',
+        })
+        return ctx
+
+
+class ManagerDashboardView(LoginRequiredMixin, TemplateView):
+    """Section 13.2 — Management dashboard (cross-scheme view)."""
+    template_name = 'dashboard/manager_dashboard.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if request.user.role != 'manager':
+            raise DjangoPermissionDenied('Only managers may access this dashboard.')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        today = timezone.localdate()
+        base = Complaint.objects.all()
+        active = base.exclude(status__in=['resolved', 'closed'])
+
+        # Status distribution
+        status_counts = base.values('status').annotate(c=Count('id'))
+        status_map = {
+            'new': 'New', 'under_review': 'Under Review', 'assigned': 'Assigned',
+            'in_progress': 'In Progress', 'pending_info': 'Pending Info',
+            'resolved': 'Resolved', 'closed': 'Closed', 'escalated': 'Escalated',
+            'reopened': 'Reopened', 'pending': 'Pending',
+        }
+        ctx['status_data'] = [
+            {'status': status_map.get(s['status'], s['status']), 'count': s['c']}
+            for s in sorted(status_counts, key=lambda x: x['c'], reverse=True)
+        ]
+
+        # Scheme breakdown
+        scheme_stats = []
+        for s in Scheme.objects.filter(is_active=True):
+            sc = base.filter(scheme=s)
+            scheme_stats.append({
+                'scheme': s,
+                'total': sc.count(),
+                'active': sc.exclude(status__in=['resolved', 'closed']).count(),
+                'overdue': sc.filter(sla_deadline__lt=today).exclude(status__in=['resolved', 'closed']).count(),
+            })
+        ctx['scheme_stats'] = scheme_stats
+
+        ctx.update({
+            'total_count': base.count(),
+            'active_count': active.count(),
+            'overdue_count': active.filter(sla_deadline__lt=today).count(),
+            'escalated_count': active.filter(escalation_level__gt=0).count(),
+            'resolved_this_month': base.filter(
+                status='resolved', date_resolved__date__gte=today.replace(day=1),
+            ).count(),
+            'avg_resolution_days': self._avg_resolution(base),
+            'sla_compliance_pct': self._sla_compliance(base),
+            'active_page': 'manager-dashboard',
+        })
+        return ctx
+
+    @staticmethod
+    def _avg_resolution(base):
+        qs = base.filter(status='resolved', date_resolved__isnull=False).annotate(
+            duration=ExpressionWrapper(F('date_resolved') - F('date_entered_system'), output_field=DurationField())
+        ).aggregate(avg=Avg('duration'))['avg']
+        return round(qs.total_seconds() / 86400, 1) if qs else 0
+
+    @staticmethod
+    def _sla_compliance(base):
+        resolved = base.filter(status__in=['resolved', 'closed'], date_resolved__isnull=False)
+        total = resolved.filter(sla_deadline__isnull=False).count()
+        met = resolved.filter(sla_deadline__isnull=False, date_resolved__date__lte=F('sla_deadline')).count()
+        return round((met / total) * 100, 1) if total else 0
+
+
+class SeniorManagementDashboardView(LoginRequiredMixin, TemplateView):
+    """Section 13.3 — Strategic dashboard for senior management / director."""
+    template_name = 'dashboard/senior_management_dashboard.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if request.user.role not in {'director', 'admin'}:
+            raise DjangoPermissionDenied('Only senior management / directors may access this dashboard.')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        today = timezone.localdate()
+        year_start = today.replace(month=1, day=1)
+        base = Complaint.objects.all()
+        active = base.exclude(status__in=['resolved', 'closed'])
+
+        # Monthly trend (12 months)
+        monthly = defaultdict(int)
+        for c in base.filter(date_entered_system__gte=today - timedelta(days=365)).values('date_entered_system'):
+            monthly[c['date_entered_system'].strftime('%b %Y')] += 1
+        sorted_months = sorted(monthly.keys(), key=lambda m: datetime.strptime(m, '%b %Y'))
+        ctx['trend_data'] = [{'label': m, 'count': monthly[m]} for m in sorted_months]
+
+        # Top 10 recurring issues (complaint type + scheme combo)
+        top = base.values('complaint_type__name', 'scheme__name').annotate(
+            c=Count('id')).order_by('-c')[:10]
+        ctx['top_issues'] = list(top)
+
+        # Resolution time by scheme
+        scheme_perf = []
+        for s in Scheme.objects.filter(is_active=True):
+            qs = base.filter(scheme=s, status='resolved', date_resolved__isnull=False).annotate(
+                d=ExpressionWrapper(F('date_resolved') - F('date_entered_system'), output_field=DurationField())
+            ).aggregate(avg=Avg('d'))['avg']
+            scheme_perf.append({
+                'scheme': s,
+                'avg_days': round(qs.total_seconds() / 86400, 1) if qs else 0,
+                'volume': base.filter(scheme=s).count(),
+            })
+        ctx['scheme_performance'] = scheme_perf
+
+        # Member satisfaction
+        from .models import SatisfactionSurvey
+        ratings = SatisfactionSurvey.objects.all()
+        avg_rating = ratings.aggregate(avg=Avg('rating'))['avg'] or 0
+        ctx.update({
+            'avg_satisfaction': round(avg_rating, 2),
+            'total_ratings': ratings.count(),
+        })
+
+        ctx.update({
+            'total_count': base.count(),
+            'ytd_count': base.filter(date_entered_system__date__gte=year_start).count(),
+            'active_count': active.count(),
+            'overdue_count': active.filter(sla_deadline__lt=today).count(),
+            'escalated_count': active.filter(escalation_level__gt=0).count(),
+            'critical_count': active.filter(priority='critical').count(),
+            'high_count': active.filter(priority='high').count(),
+            'resolved_ytd': base.filter(
+                status='resolved', date_resolved__date__gte=year_start,
+            ).count(),
+            'resolution_rate_pct': self._resolution_rate(base),
+            'active_page': 'senior-mgmt-dashboard',
+        })
+        return ctx
+
+    @staticmethod
+    def _resolution_rate(base):
+        total = base.count()
+        resolved = base.filter(status__in=['resolved', 'closed']).count()
+        return round((resolved / total) * 100, 1) if total else 0
+
+
+class AuditorDashboardView(LoginRequiredMixin, TemplateView):
+    """Section 15 — Read-only auditor view: audit trail + satisfaction summary."""
+    template_name = 'dashboard/auditor_dashboard.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if request.user.role != 'auditor':
+            raise DjangoPermissionDenied('Only auditors may access this dashboard.')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        from .models import StatusHistory, EscalationLog, SatisfactionSurvey
+        ctx = super().get_context_data(**kwargs)
+        today = timezone.localdate()
+        last_30 = today - timedelta(days=30)
+        ctx.update({
+            'total_actions': StatusHistory.objects.count(),
+            'total_escalations': EscalationLog.objects.count(),
+            'open_escalations': EscalationLog.objects.filter(resolved_at__isnull=True).count(),
+            'actions_last_30_days': StatusHistory.objects.filter(changed_at__date__gte=last_30).count(),
+            'recent_status_changes': StatusHistory.objects.select_related('complaint', 'changed_by')
+                .order_by('-changed_at')[:30],
+            'recent_escalations': EscalationLog.objects.select_related('complaint', 'escalated_to')
+                .order_by('-triggered_at')[:20],
+            'satisfaction_count': SatisfactionSurvey.objects.count(),
+            'avg_rating': SatisfactionSurvey.objects.aggregate(avg=Avg('rating'))['avg'] or 0,
+            'active_page': 'auditor-dashboard',
+        })
+        return ctx
+
+
 class AdminSettingsView(LoginRequiredMixin, View):
     template_name = 'dashboard/admin_settings.html'
+
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
